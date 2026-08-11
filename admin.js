@@ -46,5 +46,33 @@ async function editStory(id){
   preview();
 }
 
-(async()=>{const recovery=await MMAuth.acceptRecoveryFromUrl();if(recovery){$('#loginView').hidden=true;$('#recoveryView').hidden=false;$('#adminApp').hidden=true;history.replaceState(null,'',location.pathname);}else{showApp();}})();
+(async()=>{
+  let recoveryOpened=false;
+
+  function openRecovery(){
+    recoveryOpened=true;
+    $('#loginView').hidden=true;
+    $('#recoveryView').hidden=false;
+    $('#adminApp').hidden=true;
+    history.replaceState(null,'',location.pathname);
+  }
+
+  if(MMAuth.client){
+    MMAuth.client.auth.onAuthStateChange((event,session)=>{
+      if(event==='PASSWORD_RECOVERY'){
+        openRecovery();
+      }
+    });
+  }
+
+  const recovery=await MMAuth.acceptRecoveryFromUrl();
+  if(recovery){
+    openRecovery();
+    return;
+  }
+
+  setTimeout(()=>{
+    if(!recoveryOpened)showApp();
+  },1000);
+})();
 document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b)return;document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x.dataset.page===b.dataset.go));render(b.dataset.go)});
