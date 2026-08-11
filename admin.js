@@ -47,32 +47,21 @@ async function editStory(id){
 }
 
 (async()=>{
-  let recoveryOpened=false;
+  const recovery=await MMAuth.acceptRecoveryFromUrl();
 
-  function openRecovery(){
-    recoveryOpened=true;
+  if(recovery){
     $('#loginView').hidden=true;
     $('#recoveryView').hidden=false;
     $('#adminApp').hidden=true;
+
+    // Remove token/código da barra depois que a sessão segura já foi criada.
     history.replaceState(null,'',location.pathname);
-  }
-
-  if(MMAuth.client){
-    MMAuth.client.auth.onAuthStateChange((event,session)=>{
-      if(event==='PASSWORD_RECOVERY'){
-        openRecovery();
-      }
-    });
-  }
-
-  const recovery=await MMAuth.acceptRecoveryFromUrl();
-  if(recovery){
-    openRecovery();
     return;
   }
 
-  setTimeout(()=>{
-    if(!recoveryOpened)showApp();
-  },1000);
+  // Acesso normal: nunca mostra a tela de criação de senha.
+  $('#recoveryView').hidden=true;
+  $('#loginView').hidden=false;
+  showApp();
 })();
 document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b)return;document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x.dataset.page===b.dataset.go));render(b.dataset.go)});
