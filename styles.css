@@ -60,27 +60,4 @@ body::before{
   z-index: 0;
 }
 
-/* Papel de parede da página inteira com a logo Margarida Maria */
-body{
-  background-color: #f7fbf9;
-  background-image: url("logo-margarida-maria.png");
-  background-repeat: repeat;
-  background-size: 190px auto;
-  background-position: center top;
-}
 
-/* Mantém os cards limpos para facilitar a leitura */
-.card,
-.story-card,
-.category-photo-card,
-.signup-card,
-.kpi,
-.settings-card,
-.table-wrap,
-.modal-box,
-.login-card,
-.product-editor,
-.launch-preview,
-.notice{
-  background: rgba(255,255,255,0.96);
-}
