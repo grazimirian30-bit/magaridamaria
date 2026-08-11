@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+  <defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#eef4f1"/><stop offset="1" stop-color="#f8ecea"/></linearGradient></defs>
+  <rect width="1200" height="900" fill="url(#g)"/>
+  <g fill="none" stroke="#147d73" stroke-width="14" opacity=".65">
+    <rect x="330" y="220" width="540" height="440" rx="36"/>
+    <circle cx="465" cy="355" r="55"/>
+    <path d="M365 610l210-185 130 115 95-85 70 65"/>
+  </g>
+  <text x="600" y="735" text-anchor="middle" font-family="Arial, sans-serif" font-size="44" fill="#315d56">Imagem do produto</text>
+</svg>

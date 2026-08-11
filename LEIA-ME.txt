@@ -1,0 +1,22 @@
+Margarida Maria V3 - SITE + APP PWA
+Envie TODOS os arquivos extraídos para a raiz do repositório GitHub Pages.
+Página pública: index.html
+ADM: admin.html
+Scanner: scanner.html
+No primeiro acesso ao ADM, crie usuário e senha com pelo menos 6 caracteres.
+
+
+V5 PRESERVADA — HISTÓRIAS DA MARIA
+- Catálogo e imagens originais preservados.
+- Login ADM via Supabase.
+- Novo botão Histórias da Maria no painel.
+- A seção pública de histórias fica invisível enquanto não houver história publicada.
+- Para ativar o salvamento online das histórias, execute uma vez SUPABASE_HISTORIAS.sql no SQL Editor do Supabase.
+- Depois disso, histórias podem ser criadas/editadas/publicadas pelo ADM sem alterar o GitHub.
+
+
+=== V5 MASTER CONSOLIDADA ===
+Base: V5 original com fotos e catálogo preservados.
+Inclui: site + PWA/app, painel ADM ilustrativo, scanner, Histórias da Maria preparada, alteração de senha dentro do ADM e recuperação de senha Supabase consolidada.
+Para Histórias da Maria online, execute SUPABASE_HISTORIAS.sql uma única vez no SQL Editor.
+Ao publicar no GitHub Pages, substitua os arquivos antigos pelos arquivos deste pacote para evitar mistura de versões.
