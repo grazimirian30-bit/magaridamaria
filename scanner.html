@@ -1,1 +1,187 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17352b"><title>Scanner | Margarida Maria</title><link rel="stylesheet" href="styles.css"></head><body><div class="admin-shell scanner-shell"><aside class="sidebar"><img src="logo-margarida-maria.png"><a class="side-link" href="admin.html">← Voltar ao ADM</a><a class="side-link" href="index.html">Ver catálogo</a></aside><main class="admin-main"><h1>Scanner de produtos</h1><p class="muted">Leia código de barras/QR ou digite o código.</p><div class="scanner-box"><video id="video" playsinline muted></video><div class="scan-frame"></div><div class="scan-line"></div></div><div class="actions mt16"><button class="btn primary" id="startScan">Abrir câmera</button><button class="btn secondary" id="stopScan">Parar</button></div><div class="field mt16"><label>Código</label><input id="manualCode" inputmode="numeric"></div><button class="btn primary mt10" id="findCode">Buscar produto</button><div id="scanResult" class="mt16"></div></main></div><div class="toast" id="toast"></div><script src="data.js"></script><script src="scanner.js"></script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+
+  <meta
+    name="theme-color"
+    content="#17352b"
+  >
+
+  <title>Scanner | Margarida Maria</title>
+
+  <link
+    rel="icon"
+    href="favicon.png"
+  >
+
+  <link
+    rel="stylesheet"
+    href="styles.css"
+  >
+</head>
+
+
+<body>
+
+  <div class="admin-shell scanner-shell">
+
+
+    <!-- MENU LATERAL -->
+
+    <aside class="sidebar">
+
+      <img
+        src="logo-margarida-maria.png"
+        alt="Margarida Maria"
+      >
+
+      <a
+        class="side-link"
+        href="admin.html"
+      >
+        ← Voltar ao ADM
+      </a>
+
+      <a
+        class="side-link"
+        href="index.html"
+      >
+        Ver catálogo
+      </a>
+
+    </aside>
+
+
+    <!-- CONTEÚDO DO SCANNER -->
+
+    <main class="admin-main">
+
+      <h1>
+        Scanner de produtos
+      </h1>
+
+      <p class="muted">
+        Leia o código de barras ou QR Code da mercadoria.
+      </p>
+
+
+      <!-- CÂMERA -->
+
+      <div class="scanner-box">
+
+        <video
+          id="video"
+          playsinline
+          muted
+          autoplay
+        ></video>
+
+        <div class="scan-frame"></div>
+
+        <div class="scan-line"></div>
+
+      </div>
+
+
+      <!-- BOTÕES DA CÂMERA -->
+
+      <div class="actions mt16">
+
+        <button
+          class="btn primary"
+          id="startScan"
+          type="button"
+        >
+          📷 Abrir câmera
+        </button>
+
+
+        <button
+          class="btn secondary"
+          id="stopScan"
+          type="button"
+        >
+          Parar
+        </button>
+
+      </div>
+
+
+      <!-- CÓDIGO MANUAL -->
+
+      <div class="field mt16">
+
+        <label for="manualCode">
+          Código da mercadoria
+        </label>
+
+        <input
+          id="manualCode"
+          type="text"
+          autocomplete="off"
+          placeholder="Digite ou escaneie o código"
+        >
+
+      </div>
+
+
+      <button
+        class="btn primary mt10"
+        id="findCode"
+        type="button"
+      >
+        Buscar produto
+      </button>
+
+
+      <!-- RESULTADO -->
+
+      <div
+        id="scanResult"
+        class="mt16"
+      ></div>
+
+    </main>
+
+  </div>
+
+
+  <!-- AVISOS -->
+
+  <div
+    class="toast"
+    id="toast"
+  ></div>
+
+
+  <!-- DADOS DO SITE -->
+
+  <script src="data.js"></script>
+
+
+  <!--
+    LEITOR ALTERNATIVO DE CÓDIGO DE BARRAS
+
+    É usado automaticamente quando
+    BarcodeDetector não estiver disponível.
+  -->
+
+  <script
+    src="https://unpkg.com/@zxing/browser@0.2.1"
+  ></script>
+
+
+  <!-- SCANNER -->
+
+  <script src="scanner.js"></script>
+
+</body>
+
+</html>
