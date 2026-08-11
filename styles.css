@@ -42,27 +42,44 @@
   .story-card-catalog .story-card-head h3{font-size:1.3rem}
   .story-comic-image{max-height:none}
 }
-/* Papel de parede elegante com a logo no fundo do catálogo */
-#catalogo{
+body{
   position: relative;
-  overflow: hidden;
   background: #f7fbf9;
 }
 
-#catalogo::before{
+body::before{
   content: "";
-  position: absolute;
+  position: fixed;
   inset: 0;
   background-image: url("logo-margarida-maria.png");
   background-repeat: repeat;
   background-position: center;
-  background-size: 180px auto;
-  opacity: 0.04;
+  background-size: 190px auto;
+  opacity: 0.045;
   pointer-events: none;
   z-index: 0;
 }
 
-#catalogo .container{
+/* Conteúdo sempre acima do papel de parede */
+body > *{
   position: relative;
   z-index: 1;
+}
+
+/* Deixa o fundo aparecer pelas seções sem perder leitura */
+main,
+.section,
+#catalogo,
+#categorias,
+#lancamentos,
+#historias{
+  background: rgba(247, 251, 249, 0.88) !important;
+}
+
+/* Mantém cards e produtos limpos */
+.card,
+.story-card,
+.category-photo-card,
+.signup-card{
+  background: rgba(255,255,255,0.96);
 }
