@@ -1,67 +1,4764 @@
-const $=s=>document.querySelector(s),page=$('#page'),{getProducts,saveProducts,money,toast,escape,readImageFile}=MM;
-async function login(){const email=$('#adminUser').value.trim(),p=$('#adminPass').value;if(!email||!p)return alert('Informe e-mail e senha.');try{await MMAuth.login(email,p);sessionStorage.setItem('mm_admin_ok','1');showApp()}catch(e){alert('Não foi possível entrar: '+e.message)}}
-function showApp(){if(sessionStorage.getItem('mm_admin_ok')!=='1'||!MMAuth.isLogged())return;$('#loginView').hidden=true;$('#recoveryView').hidden=true;$('#adminApp').hidden=false;render('dashboard')}
-$('#loginBtn').onclick=login;$('#adminPass').onkeydown=e=>{if(e.key==='Enter')login()};$('#logoutBtn').onclick=()=>{MMAuth.logout();location.reload()};
-$('#forgotBtn').onclick=async()=>{const email=$('#adminUser').value.trim();if(!email)return alert('Digite o e-mail do administrador.');try{await MMAuth.requestPasswordReset(email);alert('E-mail de recuperação enviado. Abra o link mais recente recebido.')}catch(e){alert('Não foi possível enviar: '+e.message)}};
-$('#saveRecovery').onclick=async()=>{const p=$('#recoveryPass').value,p2=$('#recoveryPass2').value;if(p.length<10||!/[A-Z]/.test(p)||!/[a-z]/.test(p)||!/[0-9]/.test(p))return alert('Use pelo menos 10 caracteres, com maiúscula, minúscula e número.');if(p!==p2)return alert('As duas senhas precisam ser iguais.');try{await MMAuth.updatePassword(p);history.replaceState(null,'',location.pathname);MMAuth.logout();$('#recoveryView').hidden=true;$('#loginView').hidden=false;alert('Senha alterada. Agora entre com a nova senha.')}catch(e){alert('Não foi possível alterar: '+e.message)}};
-$('#menuBtn').onclick=()=>$('#adminNav').classList.toggle('open');document.querySelectorAll('[data-page]').forEach(a=>a.onclick=()=>{document.querySelectorAll('[data-page]').forEach(x=>x.classList.remove('active'));a.classList.add('active');render(a.dataset.page);if(innerWidth<800)$('#adminNav').classList.remove('open')});
-function render(w){({dashboard,products:productsPage,sales,launches,users,site:sitePage,stories:storiesPage,settings}[w]||dashboard)()}function low(){return Number(localStorage.getItem('mm_low_stock')||5)}
-function dashboard(){const p=getProducts(),stock=p.reduce((a,x)=>a+Number(x.stock||0),0),sold=p.reduce((a,x)=>a+Number(x.sold||0),0),lo=p.filter(x=>x.active!==false&&Number(x.stock||0)<=low()).length;page.innerHTML=`<div class="admin-title"><div><span class="eyebrow">Administração</span><h1>Painel Margarida Maria</h1><p class="muted">Acesso rápido às principais funções da loja.</p></div><a class="btn secondary" href="index.html">Abrir catálogo</a></div><div class="admin-quick-grid"><button class="admin-quick" data-go="products"><span class="qicon">📦</span><strong>Produtos e estoque</strong><small>Cadastrar, editar, fotos e estoque</small></button><button class="admin-quick" data-go="users"><span class="qicon">👥</span><strong>Clientes</strong><small>Ver cadastros e contatos</small></button><button class="admin-quick" data-go="launches"><span class="qicon">📣</span><strong>Divulgação / Status</strong><small>Criar arte pronta com a logo</small></button><button class="admin-quick" onclick="location.href='scanner.html'"><span class="qicon">📷</span><strong>Scanner</strong><small>Ler códigos pelo celular</small></button><button class="admin-quick" data-go="site"><span class="qicon">🖼️</span><strong>Organizar site</strong><small>Capas, categorias e vitrine</small></button><button class="admin-quick" data-go="settings"><span class="qicon">🔐</span><strong>Segurança</strong><small>Senha e backup</small></button><button class="admin-quick" data-go="stories"><span class="qicon">💬</span><strong>Histórias da Maria</strong><small>Criar quadrinhos rápidos e publicar no site</small></button></div><div class="kpis"><div class="kpi"><span>Produtos</span><strong>${p.length}</strong></div><div class="kpi"><span>Estoque total</span><strong>${stock}</strong></div><div class="kpi"><span>Vendas</span><strong>${sold}</strong></div><div class="kpi"><span>Estoque baixo</span><strong>${lo}</strong></div></div><section class="admin-section"><h2>Estoque baixo</h2>${p.filter(x=>Number(x.stock||0)<=low()).map(x=>`<div class="notice stock-note">${escape(x.name)}: <strong>${x.stock}</strong></div>`).join('')||'<p>Tudo certo com o estoque.</p>'}</section>`}
-function productsPage(){const p=getProducts();page.innerHTML=`<div class="admin-title"><div><span class="eyebrow">Catálogo</span><h1>Produtos e estoque</h1></div><button class="btn primary" id="newProduct">+ Adicionar peça</button></div><div class="table-wrap"><table class="table"><thead><tr><th>Foto</th><th>Produto</th><th>Categoria</th><th>Preço</th><th>Estoque</th><th>Vendidos</th><th>Status</th><th>Ações</th></tr></thead><tbody>${p.map(x=>`<tr><td><img class="table-thumb" src="${escape(x.image)}"></td><td><strong>${escape(x.name)}</strong></td><td>${escape(x.category)}</td><td>${money(x.price)}</td><td>${x.stock}</td><td>${x.sold||0}</td><td>${x.active===false?'Oculto':'Publicado'}</td><td><div class="table-actions"><button class="btn tiny secondary edit" data-id="${x.id}">Editar</button><button class="btn tiny primary sale" data-id="${x.id}" ${x.stock<1?'disabled':''}>Venda +1</button></div></td></tr>`).join('')}</tbody></table></div>`;$('#newProduct').onclick=()=>editProduct();document.querySelectorAll('.edit').forEach(b=>b.onclick=()=>editProduct(b.dataset.id));document.querySelectorAll('.sale').forEach(b=>b.onclick=()=>sale(b.dataset.id))}
-function sale(id){const l=getProducts(),x=l.find(v=>v.id===id);if(!x||x.stock<1)return;x.stock--;x.sold=(x.sold||0)+1;saveProducts(l);productsPage();toast('Venda registrada')}
-function editProduct(id){const l=getProducts(),found=l.find(v=>v.id===id),x=found?{...found}:{id:'p'+Date.now(),name:'',category:'Cama',price:0,stock:0,sold:0,code:'',description:'',image:'sem-imagem.svg',images:['sem-imagem.svg'],isLaunch:false,active:true};let imgs=(x.images?.length?[...x.images]:[x.image]).slice(0,8);page.innerHTML=`<div class="admin-title"><div><span class="eyebrow">Produto</span><h1>${id?'Editar':'Adicionar'} peça</h1></div></div><div class="product-editor"><div class="image-editor"><img id="imagePreview" src="${escape(imgs[0])}"><label class="btn secondary file-btn">Adicionar fotos<input id="fFile" type="file" accept="image/*" multiple hidden></label><p class="muted small">Até 8 fotos. Clique numa miniatura para torná-la principal.</p><div class="admin-image-gallery" id="adminImageGallery"></div></div><div class="form-grid"><div class="field full"><label>Nome</label><input id="fName" value="${escape(x.name)}"></div><div class="field"><label>Categoria</label><select id="fCat"><option value="Cama">Roupa de cama</option><option value="Mesa">Mesa</option><option value="Banho">Banho</option><option value="Infantil">Infantil</option></select></div><div class="field"><label>Preço</label><input id="fPrice" type="number" step=".01" value="${x.price||0}"></div><div class="field"><label>Estoque</label><input id="fStock" type="number" value="${x.stock||0}"></div><div class="field"><label>Vendidos</label><input id="fSold" type="number" value="${x.sold||0}"></div><div class="field full"><label>Código de barras / QR</label><input id="fCode" value="${escape(x.code||'')}"></div><div class="field full"><label>Descrição completa</label><textarea id="fDesc" rows="6">${escape(x.description||'')}</textarea></div><label class="check-row"><input id="fLaunch" type="checkbox" ${x.isLaunch?'checked':''}> Marcar como lançamento</label><label class="check-row"><input id="fActive" type="checkbox" ${x.active!==false?'checked':''}> Mostrar no catálogo</label></div></div><div class="actions mt16"><button class="btn primary" id="saveP">Salvar</button><button class="btn secondary" id="cancelP">Cancelar</button>${id?'<button class="btn danger" id="delP">Excluir</button>':''}</div>`;$('#fCat').value=x.category||'Cama';function ri(){if(!imgs.length)imgs=['sem-imagem.svg'];$('#adminImageGallery').innerHTML=imgs.map((s,i)=>`<div class="admin-image-item ${i===0?'main':''}"><button class="admin-image-main" data-main="${i}"><img src="${escape(s)}"></button><button class="admin-image-remove" data-remove="${i}">×</button>${i===0?'<span>Principal</span>':''}</div>`).join('');document.querySelectorAll('[data-main]').forEach(b=>b.onclick=()=>{const i=+b.dataset.main,[v]=imgs.splice(i,1);imgs.unshift(v);$('#imagePreview').src=imgs[0];ri()});document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{imgs.splice(+b.dataset.remove,1);$('#imagePreview').src=imgs[0]||'sem-imagem.svg';ri()})}ri();$('#fFile').onchange=async e=>{for(const f of [...e.target.files]){if(imgs.length>=8)break;if(imgs.length===1&&imgs[0]==='sem-imagem.svg')imgs=[];imgs.push(await readImageFile(f,1000,.78))}$('#imagePreview').src=imgs[0];ri()};$('#saveP').onclick=()=>{x.name=$('#fName').value.trim();if(!x.name)return alert('Informe o nome.');x.category=$('#fCat').value;x.price=Math.max(0,+$('#fPrice').value||0);x.stock=Math.max(0,+$('#fStock').value||0);x.sold=Math.max(0,+$('#fSold').value||0);x.code=$('#fCode').value.trim();x.description=$('#fDesc').value.trim();x.images=imgs;x.image=imgs[0]||'sem-imagem.svg';x.isLaunch=$('#fLaunch').checked;x.active=$('#fActive').checked;const i=l.findIndex(v=>v.id===x.id);i>=0?l[i]=x:l.push(x);try{saveProducts(l)}catch{return alert('Sem espaço no navegador. Use fotos menores.')}productsPage();toast('Produto salvo')};$('#cancelP').onclick=productsPage;if(id)$('#delP').onclick=()=>{if(confirm('Excluir este produto?')){saveProducts(l.filter(v=>v.id!==id));productsPage()}} }
+/* =====================================================
+   MARGARIDA MARIA
+   PAINEL ADMINISTRATIVO
+===================================================== */
 
-function sales(){const p=[...getProducts()].sort((a,b)=>(b.sold||0)-(a.sold||0));page.innerHTML=`<div class="admin-title"><div><span class="eyebrow">Desempenho</span><h1>Mais vendidos</h1></div></div><div class="table-wrap"><table class="table"><thead><tr><th>#</th><th>Produto</th><th>Vendidos</th><th>Estoque</th></tr></thead><tbody>${p.map((x,i)=>`<tr><td><strong>#${i+1}</strong></td><td>${escape(x.name)}</td><td>${x.sold||0}</td><td>${x.stock||0}</td></tr>`).join('')}</tbody></table></div>`}
-function launches(){const p=getProducts().filter(x=>x.active!==false);page.innerHTML=`<div class="admin-title"><div><span class="eyebrow">Divulgação</span><h1>Lançamentos / WhatsApp</h1></div></div><div class="form-grid"><div class="field"><label>Produto</label><select id="launchP">${p.map(x=>`<option value="${x.id}">${escape(x.name)}</option>`).join('')}</select></div><div class="field"><label>WhatsApp</label><input id="launchPhone" value="${MM.getWhatsApp()}"></div><div class="field full"><label>Mensagem</label><textarea id="launchText" rows="5">✨ Novidade Margarida Maria! Conheça este lançamento.</textarea></div></div><div class="launch-preview" id="launchPreview"></div><div class="actions mt16"><button class="btn primary" id="sendLaunch">Abrir no WhatsApp</button><button class="btn secondary" id="downloadLaunch">Baixar arte com logo</button></div>`;function sel(){return p.find(x=>x.id===$('#launchP').value)}function prev(){const x=sel();if(x)$('#launchPreview').innerHTML=`<img class="logo" src="logo-margarida-maria.png"><div><span class="launch-badge inline">Lançamento</span><h2>${escape(x.name)}</h2><div class="price big">${money(x.price)}</div></div><img class="product" src="${escape(x.image)}">`}prev();$('#launchP').onchange=prev;$('#sendLaunch').onclick=()=>{const x=sel(),phone=$('#launchPhone').value.replace(/\D/g,'');localStorage.setItem('mm_whatsapp',phone);const u=new URL('index.html',location.href);u.hash='produto-'+x.id;window.open(`https://wa.me/${phone}?text=${encodeURIComponent($('#launchText').value+'\n\n'+x.name+' — '+money(x.price)+'\n'+u.href)}`,'_blank')};$('#downloadLaunch').onclick=async()=>{const x=sel(),c=document.createElement('canvas');c.width=1080;c.height=1350;const ctx=c.getContext('2d');ctx.fillStyle='#faf7ef';ctx.fillRect(0,0,1080,1350);ctx.fillStyle='#17624a';ctx.fillRect(0,0,1080,170);const li=await loadImg('logo-margarida-maria.png');ctx.drawImage(li,55,35,360,100);const pi=await loadImg(x.image);const r=Math.min(940/pi.width,700/pi.height),w=pi.width*r,h=pi.height*r;ctx.drawImage(pi,70+(940-w)/2,270+(700-h)/2,w,h);ctx.fillStyle='#17352b';ctx.font='700 52px sans-serif';ctx.fillText(x.name,60,1050);ctx.fillStyle='#17624a';ctx.font='800 58px sans-serif';ctx.fillText(money(x.price),60,1140);c.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='lancamento-margarida-maria.png';a.click()})}}
-function loadImg(src){return new Promise((r,j)=>{const i=new Image();i.onload=()=>r(i);i.onerror=j;i.src=src})}
-function users(){let u=JSON.parse(localStorage.getItem('mm_users')||'[]');page.innerHTML=`<div class="admin-title"><div><span class="eyebrow">Relacionamento</span><h1>Clientes</h1></div><button class="btn primary" id="addU">+ Cadastrar cliente</button></div><div class="table-wrap"><table class="table"><thead><tr><th>Nome</th><th>Telefone</th><th>E-mail</th><th>Ação</th></tr></thead><tbody>${u.map((x,i)=>`<tr><td>${escape(x.name)}</td><td>${escape(x.phone)}</td><td>${escape(x.email)}</td><td><button class="btn tiny danger" data-du="${i}">Excluir</button></td></tr>`).join('')||'<tr><td colspan="4">Nenhum cliente cadastrado.</td></tr>'}</tbody></table></div><div class="modal" id="userModal"><div class="modal-box"><button class="modal-close" id="closeUser">×</button><h2>Cadastrar cliente</h2><div class="field"><label>Nome</label><input id="uName"></div><div class="field mt10"><label>Telefone</label><input id="uPhone"></div><div class="field mt10"><label>E-mail</label><input id="uEmail"></div><button class="btn primary mt16" id="saveU">Salvar</button></div></div>`;$('#addU').onclick=()=>$('#userModal').classList.add('open');$('#closeUser').onclick=()=>$('#userModal').classList.remove('open');$('#saveU').onclick=()=>{const n=$('#uName').value.trim();if(!n)return;u.push({name:n,phone:$('#uPhone').value.trim(),email:$('#uEmail').value.trim()});localStorage.setItem('mm_users',JSON.stringify(u));users()};document.querySelectorAll('[data-du]').forEach(b=>b.onclick=()=>{u.splice(+b.dataset.du,1);localStorage.setItem('mm_users',JSON.stringify(u));users()})}
-function sitePage(){const s=MM.getSite();page.innerHTML=`<div class="admin-title"><div><span class="eyebrow">Vitrine</span><h1>Organizar site</h1></div><a class="btn secondary" href="index.html">Visualizar</a></div><div class="settings-grid"><section class="settings-card"><h2>Topo do site</h2><div class="field"><label>Título</label><input id="heroT" value="${escape(s.heroTitle)}"></div><div class="field mt10"><label>Texto</label><textarea id="heroX" rows="4">${escape(s.heroText)}</textarea></div><label class="check-row"><input id="showCats" type="checkbox" ${s.showCategories!==false?'checked':''}> Mostrar categorias</label><label class="check-row"><input id="showLaunch" type="checkbox" ${s.showLaunches!==false?'checked':''}> Mostrar lançamentos</label></section><section class="settings-card full-card"><h2>Fotos e nomes das categorias</h2><div class="category-admin-grid">${['Cama','Mesa','Banho','Infantil'].map(c=>`<div class="category-admin"><img id="catImg${c}" src="${escape(s.categories[c].image)}"><div class="field"><label>${c} - nome exibido</label><input id="catLabel${c}" value="${escape(s.categories[c].label)}"></div><label class="btn secondary file-btn">Trocar foto<input type="file" data-cat-file="${c}" accept="image/*" hidden></label></div>`).join('')}</div></section></div><button class="btn primary mt16" id="saveSite">Salvar organização</button>`;let cats=JSON.parse(JSON.stringify(s.categories));document.querySelectorAll('[data-cat-file]').forEach(inp=>inp.onchange=async e=>{const c=inp.dataset.catFile,f=e.target.files[0];if(f){cats[c].image=await readImageFile(f,1200,.82);$('#catImg'+c).src=cats[c].image}});$('#saveSite').onclick=()=>{for(const c of ['Cama','Mesa','Banho','Infantil'])cats[c].label=$('#catLabel'+c).value.trim()||c;MM.saveSite({heroTitle:$('#heroT').value.trim(),heroText:$('#heroX').value.trim(),showCategories:$('#showCats').checked,showLaunches:$('#showLaunch').checked,categories:cats});toast('Site organizado e salvo')}}
-function settings(){page.innerHTML=`<div class="admin-title"><div><span class="eyebrow">Sistema</span><h1>Segurança e backup</h1></div></div><div class="settings-grid"><section class="settings-card"><h2>WhatsApp e estoque</h2><div class="field"><label>WhatsApp</label><input id="setPhone" value="${MM.getWhatsApp()}"></div><div class="field mt10"><label>Estoque baixo a partir de</label><input id="setLow" type="number" value="${low()}"></div><button class="btn primary mt16" id="saveSettings">Salvar</button></section><section class="settings-card"><h2>Alterar senha</h2><div class="field"><label>Nova senha segura</label><input id="newPass" type="password" placeholder="10+ caracteres, maiúscula, minúscula e número"><p class="muted small">Use pelo menos 10 caracteres com maiúscula, minúscula e número.</p></div><button class="btn secondary mt16" id="changePass">Alterar senha</button></section><section class="settings-card"><h2>Backup</h2><div class="actions"><button class="btn secondary" id="exportBackup">Exportar</button><label class="btn secondary file-btn">Importar<input id="importBackup" type="file" accept="application/json" hidden></label></div></section><section class="settings-card"><h2>Segurança online</h2><p class="muted">Login administrativo protegido pelo Supabase. As Histórias da Maria também ficam salvas online e podem ser publicadas pelo painel.</p></section></div>`;$('#saveSettings').onclick=()=>{localStorage.setItem('mm_whatsapp',$('#setPhone').value.replace(/\D/g,''));localStorage.setItem('mm_low_stock',String(Math.max(0,+$('#setLow').value||5)));toast('Salvo')};$('#changePass').onclick=async()=>{const p=$('#newPass').value;if(p.length<10||!/[A-Z]/.test(p)||!/[a-z]/.test(p)||!/[0-9]/.test(p))return alert('Use pelo menos 10 caracteres, com letra maiúscula, minúscula e número.');try{await MMAuth.updatePassword(p);toast('Senha alterada com segurança')}catch(e){alert('Não foi possível alterar: '+e.message)}};$('#exportBackup').onclick=()=>{const data={products:getProducts(),users:JSON.parse(localStorage.getItem('mm_users')||'[]'),site:MM.getSite(),whatsapp:MM.getWhatsApp()};const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download='margarida-maria-backup.json';a.click()};$('#importBackup').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(d.products)saveProducts(d.products);if(d.users)localStorage.setItem('mm_users',JSON.stringify(d.users));if(d.site)MM.saveSite(d.site);if(d.whatsapp)localStorage.setItem('mm_whatsapp',d.whatsapp);toast('Backup importado')}catch{alert('Backup inválido')}};r.readAsText(f)}}
+const $ = s => document.querySelector(s);
 
-let __mmStories=[];
-async function storiesPage(){
-  page.innerHTML=`<div class="admin-title"><div><span class="eyebrow">Conteúdo especial</span><h1>Histórias da Maria</h1><p class="muted">Crie histórias curtas em estilo de quadrinhos. A seção só aparece no catálogo quando uma história estiver publicada.</p></div><button class="btn primary" id="newStory">+ Nova história</button></div><div id="storiesStatus" class="notice">Carregando histórias…</div><div id="storiesList" class="story-admin-list"></div>`;
-  $('#newStory').onclick=()=>editStory();
-  try{__mmStories=await MMStories.listAdmin();renderStoryList()}catch(e){$('#storiesStatus').innerHTML=`<strong>Histórias ainda não estão ativadas no Supabase.</strong><br><span class="muted">Execute uma única vez o arquivo <b>SUPABASE_HISTORIAS.sql</b> no SQL Editor. Depois volte aqui.</span><br><small class="muted">${escape(e.message)}</small>`;$('#storiesList').innerHTML=''}
-}
-function renderStoryList(){
-  const st=$('#storiesStatus'),list=$('#storiesList');if(!st||!list)return;
-  st.innerHTML=__mmStories.length?`<strong>${__mmStories.length}</strong> história(s) cadastrada(s).`:'Nenhuma história criada ainda. Clique em <strong>+ Nova história</strong> quando quiser começar.';
-  list.innerHTML=__mmStories.map(s=>`<article class="story-admin-card"><div class="story-admin-thumb">${s.imagem?`<img src="${escape(s.imagem)}">`:'<span>🏠</span>'}</div><div class="story-admin-copy"><span class="chip">${s.publicada?'Publicada':'Rascunho'}</span><h3>${escape(s.titulo)}</h3><p>${escape(s.situacao||'')}</p><small>${escape(s.cliente_nome||'Cliente')} + Maria · ${Array.isArray(s.produto_ids)?s.produto_ids.length:0} produto(s)</small></div><div class="story-admin-actions"><button class="btn secondary storyEdit" data-id="${escape(s.id)}">Editar</button></div></article>`).join('');
-  list.querySelectorAll('.storyEdit').forEach(b=>b.onclick=()=>editStory(b.dataset.id));
-}
-function storyProductChecks(selected=[]){const set=new Set(selected||[]);return getProducts().filter(p=>p.active!==false).map(p=>`<label class="story-product-option"><input type="checkbox" data-story-product value="${escape(p.id)}" ${set.has(p.id)?'checked':''}><img src="${escape(p.image||'sem-imagem.svg')}"><span><strong>${escape(p.name)}</strong><small>${money(p.price)}</small></span></label>`).join('')}
-function storyPreview(s){const ps=getProducts().filter(p=>(s.produto_ids||[]).includes(p.id));return `<div class="story-preview-card"><div class="story-preview-title"><span class="eyebrow">Histórias com a Maria</span><h2>${escape(s.titulo||'Sua história')}</h2><p>${escape(s.situacao||'Conte rapidamente o que aconteceu com o cliente.')}</p></div><div class="comic-strip preview"><div class="comic-panel client"><div class="comic-scene">${s.imagem?`<img src="${escape(s.imagem)}">`:'<span class="scene-placeholder">🏠</span>'}</div><div class="speech client-speech"><strong>${escape(s.cliente_nome||'Cliente')}</strong><p>${escape(s.fala_cliente||'Preciso renovar minha casa…')}</p></div></div><div class="comic-panel maria"><img class="comic-maria" src="maria-logo.png"><div class="speech maria-speech"><strong>Maria</strong><p>${escape(s.fala_maria||'Eu te ajudo a encontrar a peça ideal!')}</p></div></div><div class="comic-panel products"><strong>Escolhas da Maria</strong><div class="comic-products">${ps.length?ps.map(p=>`<div><img src="${escape(p.image)}"><small>${escape(p.name)}</small></div>`).join(''):'<p class="muted">Selecione até 3 produtos.</p>'}</div></div></div></div>`}
-async function editStory(id){
-  const old=__mmStories.find(x=>String(x.id)===String(id))||{titulo:'',cliente_nome:'',situacao:'',fala_cliente:'',fala_maria:'',imagem:'',produto_ids:[],publicada:false,ordem:0};let img=old.imagem||'';
-  page.innerHTML=`<div class="admin-title"><div><span class="eyebrow">Histórias da Maria</span><h1>${id?'Editar história':'Nova história'}</h1><p class="muted">Monte uma história rápida. Você pode deixar como rascunho e publicar quando estiver pronta.</p></div></div><div class="story-editor-grid"><section class="settings-card"><div class="field"><label>Título</label><input id="storyTitle" value="${escape(old.titulo||'')}"></div><div class="field mt10"><label>Cliente / personagem</label><input id="storyClient" value="${escape(old.cliente_nome||'')}" placeholder="Ex.: Ana"></div><div class="field mt10"><label>Situação</label><textarea id="storySituation" rows="3" placeholder="Ex.: Acabou de se mudar e precisa de roupa de cama nova.">${escape(old.situacao||'')}</textarea></div><div class="field mt10"><label>Fala do cliente</label><textarea id="storyClientText" rows="3">${escape(old.fala_cliente||'')}</textarea></div><div class="field mt10"><label>Fala da Maria</label><textarea id="storyMariaText" rows="3">${escape(old.fala_maria||'')}</textarea></div><div class="field mt10"><label>Imagem da situação (opcional)</label><label class="btn secondary file-btn">Escolher imagem<input id="storyImage" type="file" accept="image/*" hidden></label><div id="storyImageMini" class="story-image-mini">${img?`<img src="${escape(img)}">`:'<span>Sem imagem ainda</span>'}</div></div><div class="field mt10"><label>Produtos que aparecem (até 3)</label><div class="story-product-picker" id="storyProductPicker">${storyProductChecks(old.produto_ids)}</div></div><div class="story-publish-row"><label class="check-row"><input id="storyPublished" type="checkbox" ${old.publicada?'checked':''}> Publicar no catálogo</label><div class="field story-order"><label>Ordem</label><input id="storyOrder" type="number" value="${Number(old.ordem||0)}"></div></div><div class="actions mt16"><button class="btn primary" id="saveStory">Salvar história</button><button class="btn secondary" id="cancelStory">Voltar</button>${id?'<button class="btn danger" id="deleteStory">Excluir</button>':''}</div></section><section><div id="storyLivePreview"></div></section></div>`;
-  function collect(){const ids=[...document.querySelectorAll('[data-story-product]:checked')].map(x=>x.value).slice(0,3);return{id:old.id,titulo:$('#storyTitle').value.trim(),cliente_nome:$('#storyClient').value.trim(),situacao:$('#storySituation').value.trim(),fala_cliente:$('#storyClientText').value.trim(),fala_maria:$('#storyMariaText').value.trim(),imagem:img,produto_ids:ids,publicada:$('#storyPublished').checked,ordem:Number($('#storyOrder').value||0)}}
-  function preview(){ $('#storyLivePreview').innerHTML=storyPreview(collect()) }
-  document.querySelectorAll('#storyTitle,#storyClient,#storySituation,#storyClientText,#storyMariaText,#storyPublished,#storyOrder').forEach(el=>el.addEventListener('input',preview));
-  document.querySelectorAll('[data-story-product]').forEach(el=>el.onchange=()=>{const checked=[...document.querySelectorAll('[data-story-product]:checked')];if(checked.length>3){el.checked=false;toast('Escolha no máximo 3 produtos')}preview()});
-  $('#storyImage').onchange=async e=>{const f=e.target.files[0];if(!f)return;img=await readImageFile(f,900,.72);$('#storyImageMini').innerHTML=`<img src="${img}">`;preview()};
-  $('#cancelStory').onclick=storiesPage;
-  $('#saveStory').onclick=async()=>{const s=collect();if(!s.titulo)return alert('Dê um título para a história.');try{$('#saveStory').disabled=true;await MMStories.save(s);toast(s.publicada?'História publicada!':'Rascunho salvo');storiesPage()}catch(e){alert('Não foi possível salvar: '+e.message);$('#saveStory').disabled=false}};
-  if(id)$('#deleteStory').onclick=async()=>{if(!confirm('Excluir esta história?'))return;try{await MMStories.remove(old.id);toast('História excluída');storiesPage()}catch(e){alert('Não foi possível excluir: '+e.message)}};
-  preview();
+const page = $('#page');
+
+const {
+  getProducts,
+  saveProducts,
+  money,
+  toast,
+  escape,
+  readImageFile
+} = MM;
+
+
+/* =====================================================
+   SCANNER → CADASTRO DE PRODUTO
+===================================================== */
+
+function getScannerProductCode() {
+
+  const params =
+    new URLSearchParams(location.search);
+
+  const codeFromUrl =
+    String(params.get('novoProduto') || '').trim();
+
+  const codeFromSession =
+    String(
+      sessionStorage.getItem(
+        'mm_new_product_code'
+      ) || ''
+    ).trim();
+
+  return codeFromUrl || codeFromSession;
 }
 
-(async()=>{
-  const recovery=await MMAuth.acceptRecoveryFromUrl();
 
-  if(recovery){
-    $('#loginView').hidden=true;
-    $('#recoveryView').hidden=false;
-    $('#adminApp').hidden=true;
+function clearScannerProductCode() {
 
-    // Remove token/código da barra depois que a sessão segura já foi criada.
-    history.replaceState(null,'',location.pathname);
+  sessionStorage.removeItem(
+    'mm_new_product_code'
+  );
+
+  try {
+
+    const url =
+      new URL(location.href);
+
+    url.searchParams.delete(
+      'novoProduto'
+    );
+
+    history.replaceState(
+      null,
+      '',
+      url.pathname +
+      url.search +
+      url.hash
+    );
+
+  }
+
+  catch (error) {
+
+    console.warn(
+      'Não foi possível limpar a URL.',
+      error
+    );
+
+  }
+
+}
+
+
+function activateAdminNav(pageName) {
+
+  document
+    .querySelectorAll('[data-page]')
+    .forEach(item => {
+
+      item.classList.toggle(
+        'active',
+        item.dataset.page === pageName
+      );
+
+    });
+
+}
+
+
+function openProductFromScanner() {
+
+  const code =
+    getScannerProductCode();
+
+  if (!code) {
+
+    return false;
+  }
+
+
+  const existing =
+    getProducts().find(product => {
+
+      return (
+        String(product.code || '').trim()
+        ===
+        code
+      );
+
+    });
+
+
+  activateAdminNav(
+    'products'
+  );
+
+
+  /*
+    Se por algum motivo o código
+    já estiver cadastrado,
+    abre o produto existente.
+  */
+
+  if (existing) {
+
+    editProduct(
+      existing.id
+    );
+
+    toast(
+      'Produto já cadastrado'
+    );
+
+  }
+
+  else {
+
+    /*
+      Produto novo.
+      Abre o formulário já com
+      o código preenchido.
+    */
+
+    editProduct(
+      null,
+      code
+    );
+
+  }
+
+
+  clearScannerProductCode();
+
+  return true;
+}
+
+
+/* =====================================================
+   LOGIN
+===================================================== */
+
+async function login() {
+
+  const email =
+    $('#adminUser').value.trim();
+
+  const password =
+    $('#adminPass').value;
+
+
+  if (
+    !email ||
+    !password
+  ) {
+
+    return alert(
+      'Informe e-mail e senha.'
+    );
+
+  }
+
+
+  try {
+
+    await MMAuth.login(
+      email,
+      password
+    );
+
+
+    sessionStorage.setItem(
+      'mm_admin_ok',
+      '1'
+    );
+
+
+    showApp();
+
+  }
+
+  catch (error) {
+
+    alert(
+      'Não foi possível entrar: ' +
+      error.message
+    );
+
+  }
+
+}
+
+
+/* =====================================================
+   MOSTRAR ADMIN
+===================================================== */
+
+function showApp() {
+
+  if (
+    sessionStorage.getItem(
+      'mm_admin_ok'
+    ) !== '1' ||
+    !MMAuth.isLogged()
+  ) {
+
+    return;
+
+  }
+
+
+  $('#loginView').hidden =
+    true;
+
+  $('#recoveryView').hidden =
+    true;
+
+  $('#adminApp').hidden =
+    false;
+
+
+  /*
+    PRIMEIRO verifica se estamos
+    voltando do scanner.
+  */
+
+  if (
+    openProductFromScanner()
+  ) {
+
     return;
   }
 
-  // Acesso normal: nunca mostra a tela de criação de senha.
-  $('#recoveryView').hidden=true;
-  $('#loginView').hidden=false;
+
+  /*
+    Entrada normal no ADM.
+  */
+
+  render(
+    'dashboard'
+  );
+
+}
+
+
+/* =====================================================
+   BOTÕES DE LOGIN
+===================================================== */
+
+$('#loginBtn').onclick =
+  login;
+
+
+$('#adminPass').onkeydown =
+  event => {
+
+    if (
+      event.key === 'Enter'
+    ) {
+
+      login();
+
+    }
+
+  };
+
+
+$('#logoutBtn').onclick =
+  () => {
+
+    sessionStorage.removeItem(
+      'mm_admin_ok'
+    );
+
+    MMAuth.logout();
+
+    location.reload();
+
+  };
+
+
+/* =====================================================
+   RECUPERAÇÃO DE SENHA
+===================================================== */
+
+$('#forgotBtn').onclick =
+  async () => {
+
+    const email =
+      $('#adminUser').value.trim();
+
+
+    if (!email) {
+
+      return alert(
+        'Digite o e-mail do administrador.'
+      );
+
+    }
+
+
+    try {
+
+      await MMAuth
+        .requestPasswordReset(
+          email
+        );
+
+
+      alert(
+        'E-mail de recuperação enviado. ' +
+        'Abra o link mais recente recebido.'
+      );
+
+    }
+
+    catch (error) {
+
+      alert(
+        'Não foi possível enviar: ' +
+        error.message
+      );
+
+    }
+
+  };
+
+
+$('#saveRecovery').onclick =
+  async () => {
+
+    const password =
+      $('#recoveryPass').value;
+
+    const password2 =
+      $('#recoveryPass2').value;
+
+
+    if (
+      password.length < 10 ||
+      !/[A-Z]/.test(password) ||
+      !/[a-z]/.test(password) ||
+      !/[0-9]/.test(password)
+    ) {
+
+      return alert(
+        'Use pelo menos 10 caracteres, ' +
+        'com maiúscula, minúscula e número.'
+      );
+
+    }
+
+
+    if (
+      password !== password2
+    ) {
+
+      return alert(
+        'As duas senhas precisam ser iguais.'
+      );
+
+    }
+
+
+    try {
+
+      await MMAuth.updatePassword(
+        password
+      );
+
+
+      history.replaceState(
+        null,
+        '',
+        location.pathname
+      );
+
+
+      MMAuth.logout();
+
+
+      $('#recoveryView').hidden =
+        true;
+
+      $('#loginView').hidden =
+        false;
+
+
+      alert(
+        'Senha alterada. ' +
+        'Agora entre com a nova senha.'
+      );
+
+    }
+
+    catch (error) {
+
+      alert(
+        'Não foi possível alterar: ' +
+        error.message
+      );
+
+    }
+
+  };
+
+
+/* =====================================================
+   MENU
+===================================================== */
+
+$('#menuBtn').onclick =
+  () => {
+
+    $('#adminNav')
+      .classList
+      .toggle('open');
+
+  };
+
+
+document
+  .querySelectorAll('[data-page]')
+  .forEach(item => {
+
+    item.onclick = () => {
+
+      document
+        .querySelectorAll('[data-page]')
+        .forEach(nav => {
+
+          nav.classList.remove(
+            'active'
+          );
+
+        });
+
+
+      item.classList.add(
+        'active'
+      );
+
+
+      render(
+        item.dataset.page
+      );
+
+
+      if (
+        innerWidth < 800
+      ) {
+
+        $('#adminNav')
+          .classList
+          .remove('open');
+
+      }
+
+    };
+
+  });
+
+
+/* =====================================================
+   NAVEGAÇÃO DAS PÁGINAS
+===================================================== */
+
+function render(where) {
+
+  const pages = {
+
+    dashboard,
+
+    products:
+      productsPage,
+
+    sales,
+
+    launches,
+
+    users,
+
+    site:
+      sitePage,
+
+    stories:
+      storiesPage,
+
+    settings
+
+  };
+
+
+  (
+    pages[where] ||
+    dashboard
+  )();
+
+}
+
+
+/* =====================================================
+   ESTOQUE BAIXO
+===================================================== */
+
+function low() {
+
+  return Number(
+    localStorage.getItem(
+      'mm_low_stock'
+    ) || 5
+  );
+
+}
+
+
+/* =====================================================
+   DASHBOARD
+===================================================== */
+
+function dashboard() {
+
+  const products =
+    getProducts();
+
+
+  const stock =
+    products.reduce(
+      (
+        total,
+        product
+      ) => {
+
+        return (
+          total +
+          Number(
+            product.stock || 0
+          )
+        );
+
+      },
+      0
+    );
+
+
+  const sold =
+    products.reduce(
+      (
+        total,
+        product
+      ) => {
+
+        return (
+          total +
+          Number(
+            product.sold || 0
+          )
+        );
+
+      },
+      0
+    );
+
+
+  const lowStock =
+    products.filter(
+      product => {
+
+        return (
+          product.active !== false &&
+          Number(
+            product.stock || 0
+          ) <= low()
+        );
+
+      }
+    ).length;
+
+
+  page.innerHTML = `
+
+    <div class="admin-title">
+
+      <div>
+
+        <span class="eyebrow">
+          Administração
+        </span>
+
+        <h1>
+          Painel Margarida Maria
+        </h1>
+
+        <p class="muted">
+          Acesso rápido às principais funções da loja.
+        </p>
+
+      </div>
+
+
+      <a
+        class="btn secondary"
+        href="index.html"
+      >
+        Abrir catálogo
+      </a>
+
+    </div>
+
+
+    <div class="admin-quick-grid">
+
+      <button
+        class="admin-quick"
+        data-go="products"
+      >
+
+        <span class="qicon">
+          📦
+        </span>
+
+        <strong>
+          Produtos e estoque
+        </strong>
+
+        <small>
+          Cadastrar, editar, fotos e estoque
+        </small>
+
+      </button>
+
+
+      <button
+        class="admin-quick"
+        data-go="users"
+      >
+
+        <span class="qicon">
+          👥
+        </span>
+
+        <strong>
+          Clientes
+        </strong>
+
+        <small>
+          Ver cadastros e contatos
+        </small>
+
+      </button>
+
+
+      <button
+        class="admin-quick"
+        data-go="launches"
+      >
+
+        <span class="qicon">
+          📣
+        </span>
+
+        <strong>
+          Divulgação / Status
+        </strong>
+
+        <small>
+          Criar arte pronta com a logo
+        </small>
+
+      </button>
+
+
+      <button
+        class="admin-quick"
+        onclick="location.href='scanner.html'"
+      >
+
+        <span class="qicon">
+          📷
+        </span>
+
+        <strong>
+          Scanner
+        </strong>
+
+        <small>
+          Ler códigos pelo celular
+        </small>
+
+      </button>
+
+
+      <button
+        class="admin-quick"
+        data-go="site"
+      >
+
+        <span class="qicon">
+          🖼️
+        </span>
+
+        <strong>
+          Organizar site
+        </strong>
+
+        <small>
+          Capas, categorias e vitrine
+        </small>
+
+      </button>
+
+
+      <button
+        class="admin-quick"
+        data-go="settings"
+      >
+
+        <span class="qicon">
+          🔐
+        </span>
+
+        <strong>
+          Segurança
+        </strong>
+
+        <small>
+          Senha e backup
+        </small>
+
+      </button>
+
+
+      <button
+        class="admin-quick"
+        data-go="stories"
+      >
+
+        <span class="qicon">
+          💬
+        </span>
+
+        <strong>
+          Histórias da Maria
+        </strong>
+
+        <small>
+          Criar quadrinhos rápidos e publicar no site
+        </small>
+
+      </button>
+
+    </div>
+
+
+    <div class="kpis">
+
+      <div class="kpi">
+
+        <span>
+          Produtos
+        </span>
+
+        <strong>
+          ${products.length}
+        </strong>
+
+      </div>
+
+
+      <div class="kpi">
+
+        <span>
+          Estoque total
+        </span>
+
+        <strong>
+          ${stock}
+        </strong>
+
+      </div>
+
+
+      <div class="kpi">
+
+        <span>
+          Vendas
+        </span>
+
+        <strong>
+          ${sold}
+        </strong>
+
+      </div>
+
+
+      <div class="kpi">
+
+        <span>
+          Estoque baixo
+        </span>
+
+        <strong>
+          ${lowStock}
+        </strong>
+
+      </div>
+
+    </div>
+
+
+    <section class="admin-section">
+
+      <h2>
+        Estoque baixo
+      </h2>
+
+      ${
+        products
+
+          .filter(
+            product => {
+
+              return (
+                Number(
+                  product.stock || 0
+                ) <= low()
+              );
+
+            }
+          )
+
+          .map(
+            product => `
+
+              <div class="notice stock-note">
+
+                ${escape(product.name)}:
+
+                <strong>
+                  ${product.stock}
+                </strong>
+
+              </div>
+            `
+          )
+
+          .join('')
+
+        ||
+
+        '<p>Tudo certo com o estoque.</p>'
+      }
+
+    </section>
+  `;
+
+}
+
+
+/* =====================================================
+   PRODUTOS E ESTOQUE
+===================================================== */
+
+function productsPage() {
+
+  const products =
+    getProducts();
+
+
+  page.innerHTML = `
+
+    <div class="admin-title">
+
+      <div>
+
+        <span class="eyebrow">
+          Catálogo
+        </span>
+
+        <h1>
+          Produtos e estoque
+        </h1>
+
+      </div>
+
+
+      <button
+        class="btn primary"
+        id="newProduct"
+      >
+        + Adicionar peça
+      </button>
+
+    </div>
+
+
+    <div class="table-wrap">
+
+      <table class="table">
+
+        <thead>
+
+          <tr>
+
+            <th>
+              Foto
+            </th>
+
+            <th>
+              Produto
+            </th>
+
+            <th>
+              Categoria
+            </th>
+
+            <th>
+              Preço
+            </th>
+
+            <th>
+              Estoque
+            </th>
+
+            <th>
+              Vendidos
+            </th>
+
+            <th>
+              Status
+            </th>
+
+            <th>
+              Ações
+            </th>
+
+          </tr>
+
+        </thead>
+
+
+        <tbody>
+
+          ${
+            products
+              .map(
+                product => `
+
+                  <tr>
+
+                    <td>
+
+                      <img
+                        class="table-thumb"
+                        src="${escape(product.image)}"
+                      >
+
+                    </td>
+
+
+                    <td>
+
+                      <strong>
+                        ${escape(product.name)}
+                      </strong>
+
+                    </td>
+
+
+                    <td>
+                      ${escape(product.category)}
+                    </td>
+
+
+                    <td>
+                      ${money(product.price)}
+                    </td>
+
+
+                    <td>
+                      ${product.stock}
+                    </td>
+
+
+                    <td>
+                      ${product.sold || 0}
+                    </td>
+
+
+                    <td>
+
+                      ${
+                        product.active === false
+                          ? 'Oculto'
+                          : 'Publicado'
+                      }
+
+                    </td>
+
+
+                    <td>
+
+                      <div class="table-actions">
+
+                        <button
+                          class="btn tiny secondary edit"
+                          data-id="${product.id}"
+                        >
+                          Editar
+                        </button>
+
+
+                        <button
+                          class="btn tiny primary sale"
+                          data-id="${product.id}"
+                          ${
+                            product.stock < 1
+                              ? 'disabled'
+                              : ''
+                          }
+                        >
+                          Venda +1
+                        </button>
+
+                      </div>
+
+                    </td>
+
+                  </tr>
+                `
+              )
+              .join('')
+          }
+
+        </tbody>
+
+      </table>
+
+    </div>
+  `;
+
+
+  $('#newProduct').onclick =
+    () => editProduct();
+
+
+  document
+    .querySelectorAll('.edit')
+    .forEach(button => {
+
+      button.onclick =
+        () => editProduct(
+          button.dataset.id
+        );
+
+    });
+
+
+  document
+    .querySelectorAll('.sale')
+    .forEach(button => {
+
+      button.onclick =
+        () => sale(
+          button.dataset.id
+        );
+
+    });
+
+}
+
+
+/* =====================================================
+   REGISTRAR VENDA
+===================================================== */
+
+function sale(id) {
+
+  const products =
+    getProducts();
+
+
+  const product =
+    products.find(
+      item => item.id === id
+    );
+
+
+  if (
+    !product ||
+    product.stock < 1
+  ) {
+
+    return;
+
+  }
+
+
+  product.stock--;
+
+  product.sold =
+    (product.sold || 0) + 1;
+
+
+  saveProducts(
+    products
+  );
+
+
+  productsPage();
+
+
+  toast(
+    'Venda registrada'
+  );
+
+}
+
+
+/* =====================================================
+   ADICIONAR / EDITAR PRODUTO
+
+   initialCode recebe automaticamente
+   o código vindo do scanner.
+===================================================== */
+
+function editProduct(
+  id,
+  initialCode = ''
+) {
+
+  const products =
+    getProducts();
+
+
+  const found =
+    products.find(
+      product =>
+        product.id === id
+    );
+
+
+  const product =
+    found
+
+      ? {
+          ...found
+        }
+
+      : {
+
+          id:
+            'p' + Date.now(),
+
+          name:
+            '',
+
+          category:
+            'Cama',
+
+          price:
+            0,
+
+          stock:
+            0,
+
+          sold:
+            0,
+
+          code:
+            String(
+              initialCode || ''
+            ).trim(),
+
+          description:
+            '',
+
+          image:
+            'sem-imagem.svg',
+
+          images:
+            [
+              'sem-imagem.svg'
+            ],
+
+          isLaunch:
+            false,
+
+          active:
+            true
+
+        };
+
+
+  let images =
+    (
+      product.images?.length
+
+        ? [
+            ...product.images
+          ]
+
+        : [
+            product.image
+          ]
+    )
+    .slice(
+      0,
+      8
+    );
+
+
+  page.innerHTML = `
+
+    <div class="admin-title">
+
+      <div>
+
+        <span class="eyebrow">
+          Produto
+        </span>
+
+        <h1>
+          ${id ? 'Editar' : 'Adicionar'} peça
+        </h1>
+
+        ${
+          !id &&
+          initialCode
+
+            ? `
+
+              <p class="muted">
+                📷 Código recebido pelo scanner:
+                <strong>
+                  ${escape(initialCode)}
+                </strong>
+              </p>
+            `
+
+            : ''
+        }
+
+      </div>
+
+    </div>
+
+
+    <div class="product-editor">
+
+
+      <div class="image-editor">
+
+        <img
+          id="imagePreview"
+          src="${escape(images[0])}"
+        >
+
+
+        <label class="btn secondary file-btn">
+
+          Adicionar fotos
+
+          <input
+            id="fFile"
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+          >
+
+        </label>
+
+
+        <p class="muted small">
+          Até 8 fotos. Clique numa miniatura
+          para torná-la principal.
+        </p>
+
+
+        <div
+          class="admin-image-gallery"
+          id="adminImageGallery"
+        ></div>
+
+      </div>
+
+
+      <div class="form-grid">
+
+
+        <div class="field full">
+
+          <label>
+            Nome
+          </label>
+
+          <input
+            id="fName"
+            value="${escape(product.name)}"
+          >
+
+        </div>
+
+
+        <div class="field">
+
+          <label>
+            Categoria
+          </label>
+
+          <select id="fCat">
+
+            <option value="Cama">
+              Roupa de cama
+            </option>
+
+            <option value="Mesa">
+              Mesa
+            </option>
+
+            <option value="Banho">
+              Banho
+            </option>
+
+            <option value="Infantil">
+              Infantil
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="field">
+
+          <label>
+            Preço
+          </label>
+
+          <input
+            id="fPrice"
+            type="number"
+            step=".01"
+            value="${product.price || 0}"
+          >
+
+        </div>
+
+
+        <div class="field">
+
+          <label>
+            Estoque
+          </label>
+
+          <input
+            id="fStock"
+            type="number"
+            value="${product.stock || 0}"
+          >
+
+        </div>
+
+
+        <div class="field">
+
+          <label>
+            Vendidos
+          </label>
+
+          <input
+            id="fSold"
+            type="number"
+            value="${product.sold || 0}"
+          >
+
+        </div>
+
+
+        <div class="field full">
+
+          <label>
+            Código de barras / QR
+          </label>
+
+          <input
+            id="fCode"
+            value="${escape(product.code || '')}"
+            autocomplete="off"
+          >
+
+        </div>
+
+
+        <div class="field full">
+
+          <label>
+            Descrição completa
+          </label>
+
+          <textarea
+            id="fDesc"
+            rows="6"
+          >${escape(product.description || '')}</textarea>
+
+        </div>
+
+
+        <label class="check-row">
+
+          <input
+            id="fLaunch"
+            type="checkbox"
+            ${
+              product.isLaunch
+                ? 'checked'
+                : ''
+            }
+          >
+
+          Marcar como lançamento
+
+        </label>
+
+
+        <label class="check-row">
+
+          <input
+            id="fActive"
+            type="checkbox"
+            ${
+              product.active !== false
+                ? 'checked'
+                : ''
+            }
+          >
+
+          Mostrar no catálogo
+
+        </label>
+
+      </div>
+
+    </div>
+
+
+    <div class="actions mt16">
+
+      <button
+        class="btn primary"
+        id="saveP"
+      >
+        Salvar
+      </button>
+
+
+      <button
+        class="btn secondary"
+        id="cancelP"
+      >
+        Cancelar
+      </button>
+
+
+      ${
+        id
+
+          ? `
+
+            <button
+              class="btn danger"
+              id="delP"
+            >
+              Excluir
+            </button>
+          `
+
+          : ''
+      }
+
+    </div>
+  `;
+
+
+  $('#fCat').value =
+    product.category || 'Cama';
+
+
+  /* ===================================================
+     GALERIA DE IMAGENS
+  =================================================== */
+
+  function renderImages() {
+
+    if (
+      !images.length
+    ) {
+
+      images = [
+        'sem-imagem.svg'
+      ];
+
+    }
+
+
+    $('#adminImageGallery')
+      .innerHTML =
+
+      images
+        .map(
+          (
+            image,
+            index
+          ) => `
+
+            <div
+              class="
+                admin-image-item
+                ${
+                  index === 0
+                    ? 'main'
+                    : ''
+                }
+              "
+            >
+
+              <button
+                class="admin-image-main"
+                data-main="${index}"
+              >
+
+                <img
+                  src="${escape(image)}"
+                >
+
+              </button>
+
+
+              <button
+                class="admin-image-remove"
+                data-remove="${index}"
+              >
+                ×
+              </button>
+
+
+              ${
+                index === 0
+                  ? '<span>Principal</span>'
+                  : ''
+              }
+
+            </div>
+          `
+        )
+        .join('');
+
+
+    document
+      .querySelectorAll(
+        '[data-main]'
+      )
+      .forEach(button => {
+
+        button.onclick =
+          () => {
+
+            const index =
+              Number(
+                button.dataset.main
+              );
+
+
+            const [
+              selected
+            ] =
+              images.splice(
+                index,
+                1
+              );
+
+
+            images.unshift(
+              selected
+            );
+
+
+            $('#imagePreview').src =
+              images[0];
+
+
+            renderImages();
+
+          };
+
+      });
+
+
+    document
+      .querySelectorAll(
+        '[data-remove]'
+      )
+      .forEach(button => {
+
+        button.onclick =
+          () => {
+
+            images.splice(
+              Number(
+                button.dataset.remove
+              ),
+              1
+            );
+
+
+            $('#imagePreview').src =
+              images[0] ||
+              'sem-imagem.svg';
+
+
+            renderImages();
+
+          };
+
+      });
+
+  }
+
+
+  renderImages();
+
+
+  /* ===================================================
+     ADICIONAR FOTOS
+  =================================================== */
+
+  $('#fFile').onchange =
+    async event => {
+
+      for (
+        const file
+        of [
+          ...event.target.files
+        ]
+      ) {
+
+        if (
+          images.length >= 8
+        ) {
+
+          break;
+
+        }
+
+
+        if (
+          images.length === 1 &&
+          images[0] ===
+            'sem-imagem.svg'
+        ) {
+
+          images = [];
+
+        }
+
+
+        images.push(
+
+          await readImageFile(
+            file,
+            1000,
+            .78
+          )
+
+        );
+
+      }
+
+
+      $('#imagePreview').src =
+        images[0];
+
+
+      renderImages();
+
+    };
+
+
+  /* ===================================================
+     SALVAR PRODUTO
+  =================================================== */
+
+  $('#saveP').onclick =
+    () => {
+
+      product.name =
+        $('#fName').value.trim();
+
+
+      if (
+        !product.name
+      ) {
+
+        return alert(
+          'Informe o nome.'
+        );
+
+      }
+
+
+      const newCode =
+        $('#fCode').value.trim();
+
+
+      /*
+        PROTEÇÃO CONTRA
+        CÓDIGO DUPLICADO.
+      */
+
+      if (newCode) {
+
+        const duplicate =
+          products.find(
+            otherProduct => {
+
+              return (
+                otherProduct.id
+                  !== product.id
+                &&
+                String(
+                  otherProduct.code || ''
+                ).trim()
+                  === newCode
+              );
+
+            }
+          );
+
+
+        if (duplicate) {
+
+          return alert(
+
+            'Este código já está cadastrado no produto "' +
+            duplicate.name +
+            '".'
+
+          );
+
+        }
+
+      }
+
+
+      product.category =
+        $('#fCat').value;
+
+
+      product.price =
+        Math.max(
+          0,
+          Number(
+            $('#fPrice').value
+          ) || 0
+        );
+
+
+      product.stock =
+        Math.max(
+          0,
+          Number(
+            $('#fStock').value
+          ) || 0
+        );
+
+
+      product.sold =
+        Math.max(
+          0,
+          Number(
+            $('#fSold').value
+          ) || 0
+        );
+
+
+      product.code =
+        newCode;
+
+
+      product.description =
+        $('#fDesc').value.trim();
+
+
+      product.images =
+        images;
+
+
+      product.image =
+        images[0] ||
+        'sem-imagem.svg';
+
+
+      product.isLaunch =
+        $('#fLaunch').checked;
+
+
+      product.active =
+        $('#fActive').checked;
+
+
+      const index =
+        products.findIndex(
+          existingProduct => {
+
+            return (
+              existingProduct.id ===
+              product.id
+            );
+
+          }
+        );
+
+
+      if (
+        index >= 0
+      ) {
+
+        products[index] =
+          product;
+
+      }
+
+      else {
+
+        products.push(
+          product
+        );
+
+      }
+
+
+      try {
+
+        saveProducts(
+          products
+        );
+
+      }
+
+      catch (error) {
+
+        return alert(
+          'Sem espaço no navegador. ' +
+          'Use fotos menores.'
+        );
+
+      }
+
+
+      productsPage();
+
+
+      toast(
+        'Produto salvo'
+      );
+
+    };
+
+
+  /* ===================================================
+     CANCELAR
+  =================================================== */
+
+  $('#cancelP').onclick =
+    productsPage;
+
+
+  /* ===================================================
+     EXCLUIR
+  =================================================== */
+
+  if (id) {
+
+    $('#delP').onclick =
+      () => {
+
+        if (
+          confirm(
+            'Excluir este produto?'
+          )
+        ) {
+
+          saveProducts(
+
+            products.filter(
+              existingProduct => {
+
+                return (
+                  existingProduct.id !==
+                  id
+                );
+
+              }
+            )
+
+          );
+
+
+          productsPage();
+
+        }
+
+      };
+
+  }
+
+}
+
+
+/* =====================================================
+   MAIS VENDIDOS
+===================================================== */
+
+function sales() {
+
+  const products =
+    [
+      ...getProducts()
+    ]
+    .sort(
+      (
+        productA,
+        productB
+      ) => {
+
+        return (
+          (productB.sold || 0)
+          -
+          (productA.sold || 0)
+        );
+
+      }
+    );
+
+
+  page.innerHTML = `
+
+    <div class="admin-title">
+
+      <div>
+
+        <span class="eyebrow">
+          Desempenho
+        </span>
+
+        <h1>
+          Mais vendidos
+        </h1>
+
+      </div>
+
+    </div>
+
+
+    <div class="table-wrap">
+
+      <table class="table">
+
+        <thead>
+
+          <tr>
+
+            <th>#</th>
+
+            <th>
+              Produto
+            </th>
+
+            <th>
+              Vendidos
+            </th>
+
+            <th>
+              Estoque
+            </th>
+
+          </tr>
+
+        </thead>
+
+
+        <tbody>
+
+          ${
+            products
+              .map(
+                (
+                  product,
+                  index
+                ) => `
+
+                  <tr>
+
+                    <td>
+
+                      <strong>
+                        #${index + 1}
+                      </strong>
+
+                    </td>
+
+                    <td>
+                      ${escape(product.name)}
+                    </td>
+
+                    <td>
+                      ${product.sold || 0}
+                    </td>
+
+                    <td>
+                      ${product.stock || 0}
+                    </td>
+
+                  </tr>
+                `
+              )
+              .join('')
+          }
+
+        </tbody>
+
+      </table>
+
+    </div>
+  `;
+
+}
+
+
+/* =====================================================
+   LANÇAMENTOS / WHATSAPP
+===================================================== */
+
+function launches() {
+
+  const products =
+    getProducts()
+      .filter(
+        product =>
+          product.active !== false
+      );
+
+
+  page.innerHTML = `
+
+    <div class="admin-title">
+
+      <div>
+
+        <span class="eyebrow">
+          Divulgação
+        </span>
+
+        <h1>
+          Lançamentos / WhatsApp
+        </h1>
+
+      </div>
+
+    </div>
+
+
+    <div class="form-grid">
+
+      <div class="field">
+
+        <label>
+          Produto
+        </label>
+
+        <select id="launchP">
+
+          ${
+            products
+              .map(
+                product => `
+
+                  <option
+                    value="${product.id}"
+                  >
+                    ${escape(product.name)}
+                  </option>
+                `
+              )
+              .join('')
+          }
+
+        </select>
+
+      </div>
+
+
+      <div class="field">
+
+        <label>
+          WhatsApp
+        </label>
+
+        <input
+          id="launchPhone"
+          value="${MM.getWhatsApp()}"
+        >
+
+      </div>
+
+
+      <div class="field full">
+
+        <label>
+          Mensagem
+        </label>
+
+        <textarea
+          id="launchText"
+          rows="5"
+        >✨ Novidade Margarida Maria! Conheça este lançamento.</textarea>
+
+      </div>
+
+    </div>
+
+
+    <div
+      class="launch-preview"
+      id="launchPreview"
+    ></div>
+
+
+    <div class="actions mt16">
+
+      <button
+        class="btn primary"
+        id="sendLaunch"
+      >
+        Abrir no WhatsApp
+      </button>
+
+
+      <button
+        class="btn secondary"
+        id="downloadLaunch"
+      >
+        Baixar arte com logo
+      </button>
+
+    </div>
+  `;
+
+
+  function selectedProduct() {
+
+    return products.find(
+      product =>
+        product.id ===
+        $('#launchP').value
+    );
+
+  }
+
+
+  function previewLaunch() {
+
+    const product =
+      selectedProduct();
+
+
+    if (!product) {
+
+      return;
+
+    }
+
+
+    $('#launchPreview')
+      .innerHTML = `
+
+        <img
+          class="logo"
+          src="logo-margarida-maria.png"
+        >
+
+
+        <div>
+
+          <span class="launch-badge inline">
+            Lançamento
+          </span>
+
+          <h2>
+            ${escape(product.name)}
+          </h2>
+
+          <div class="price big">
+            ${money(product.price)}
+          </div>
+
+        </div>
+
+
+        <img
+          class="product"
+          src="${escape(product.image)}"
+        >
+      `;
+
+  }
+
+
+  previewLaunch();
+
+
+  $('#launchP').onchange =
+    previewLaunch;
+
+
+  $('#sendLaunch').onclick =
+    () => {
+
+      const product =
+        selectedProduct();
+
+
+      if (!product) {
+
+        return;
+
+      }
+
+
+      const phone =
+        $('#launchPhone')
+          .value
+          .replace(
+            /\D/g,
+            ''
+          );
+
+
+      localStorage.setItem(
+        'mm_whatsapp',
+        phone
+      );
+
+
+      const productUrl =
+        new URL(
+          'index.html',
+          location.href
+        );
+
+
+      productUrl.hash =
+        'produto-' +
+        product.id;
+
+
+      window.open(
+
+        `https://wa.me/${phone}?text=${
+          encodeURIComponent(
+            $('#launchText').value +
+            '\n\n' +
+            product.name +
+            ' — ' +
+            money(product.price) +
+            '\n' +
+            productUrl.href
+          )
+        }`,
+
+        '_blank'
+
+      );
+
+    };
+
+
+  $('#downloadLaunch').onclick =
+    async () => {
+
+      const product =
+        selectedProduct();
+
+
+      if (!product) {
+
+        return;
+
+      }
+
+
+      const canvas =
+        document.createElement(
+          'canvas'
+        );
+
+
+      canvas.width =
+        1080;
+
+      canvas.height =
+        1350;
+
+
+      const context =
+        canvas.getContext(
+          '2d'
+        );
+
+
+      context.fillStyle =
+        '#faf7ef';
+
+      context.fillRect(
+        0,
+        0,
+        1080,
+        1350
+      );
+
+
+      context.fillStyle =
+        '#17624a';
+
+      context.fillRect(
+        0,
+        0,
+        1080,
+        170
+      );
+
+
+      const logo =
+        await loadImg(
+          'logo-margarida-maria.png'
+        );
+
+
+      context.drawImage(
+        logo,
+        55,
+        35,
+        360,
+        100
+      );
+
+
+      const productImage =
+        await loadImg(
+          product.image
+        );
+
+
+      const ratio =
+        Math.min(
+
+          940 /
+          productImage.width,
+
+          700 /
+          productImage.height
+
+        );
+
+
+      const width =
+        productImage.width *
+        ratio;
+
+
+      const height =
+        productImage.height *
+        ratio;
+
+
+      context.drawImage(
+
+        productImage,
+
+        70 +
+        (940 - width) / 2,
+
+        270 +
+        (700 - height) / 2,
+
+        width,
+
+        height
+
+      );
+
+
+      context.fillStyle =
+        '#17352b';
+
+
+      context.font =
+        '700 52px sans-serif';
+
+
+      context.fillText(
+        product.name,
+        60,
+        1050
+      );
+
+
+      context.fillStyle =
+        '#17624a';
+
+
+      context.font =
+        '800 58px sans-serif';
+
+
+      context.fillText(
+        money(product.price),
+        60,
+        1140
+      );
+
+
+      canvas.toBlob(
+        blob => {
+
+          const link =
+            document.createElement(
+              'a'
+            );
+
+
+          link.href =
+            URL.createObjectURL(
+              blob
+            );
+
+
+          link.download =
+            'lancamento-margarida-maria.png';
+
+
+          link.click();
+
+        }
+      );
+
+    };
+
+}
+
+
+/* =====================================================
+   CARREGAR IMAGEM
+===================================================== */
+
+function loadImg(src) {
+
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      const image =
+        new Image();
+
+
+      image.onload =
+        () => resolve(
+          image
+        );
+
+
+      image.onerror =
+        reject;
+
+
+      image.src =
+        src;
+
+    }
+  );
+
+}
+
+
+/* =====================================================
+   CLIENTES
+===================================================== */
+
+function users() {
+
+  let usersList =
+    JSON.parse(
+      localStorage.getItem(
+        'mm_users'
+      ) || '[]'
+    );
+
+
+  page.innerHTML = `
+
+    <div class="admin-title">
+
+      <div>
+
+        <span class="eyebrow">
+          Relacionamento
+        </span>
+
+        <h1>
+          Clientes
+        </h1>
+
+      </div>
+
+
+      <button
+        class="btn primary"
+        id="addU"
+      >
+        + Cadastrar cliente
+      </button>
+
+    </div>
+
+
+    <div class="table-wrap">
+
+      <table class="table">
+
+        <thead>
+
+          <tr>
+
+            <th>
+              Nome
+            </th>
+
+            <th>
+              Telefone
+            </th>
+
+            <th>
+              E-mail
+            </th>
+
+            <th>
+              Ação
+            </th>
+
+          </tr>
+
+        </thead>
+
+
+        <tbody>
+
+          ${
+            usersList
+              .map(
+                (
+                  user,
+                  index
+                ) => `
+
+                  <tr>
+
+                    <td>
+                      ${escape(user.name)}
+                    </td>
+
+                    <td>
+                      ${escape(user.phone)}
+                    </td>
+
+                    <td>
+                      ${escape(user.email)}
+                    </td>
+
+                    <td>
+
+                      <button
+                        class="btn tiny danger"
+                        data-du="${index}"
+                      >
+                        Excluir
+                      </button>
+
+                    </td>
+
+                  </tr>
+                `
+              )
+              .join('')
+
+            ||
+
+            `
+              <tr>
+                <td colspan="4">
+                  Nenhum cliente cadastrado.
+                </td>
+              </tr>
+            `
+          }
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+
+    <div
+      class="modal"
+      id="userModal"
+    >
+
+      <div class="modal-box">
+
+        <button
+          class="modal-close"
+          id="closeUser"
+        >
+          ×
+        </button>
+
+
+        <h2>
+          Cadastrar cliente
+        </h2>
+
+
+        <div class="field">
+
+          <label>
+            Nome
+          </label>
+
+          <input id="uName">
+
+        </div>
+
+
+        <div class="field mt10">
+
+          <label>
+            Telefone
+          </label>
+
+          <input id="uPhone">
+
+        </div>
+
+
+        <div class="field mt10">
+
+          <label>
+            E-mail
+          </label>
+
+          <input id="uEmail">
+
+        </div>
+
+
+        <button
+          class="btn primary mt16"
+          id="saveU"
+        >
+          Salvar
+        </button>
+
+      </div>
+
+    </div>
+  `;
+
+
+  $('#addU').onclick =
+    () => {
+
+      $('#userModal')
+        .classList
+        .add('open');
+
+    };
+
+
+  $('#closeUser').onclick =
+    () => {
+
+      $('#userModal')
+        .classList
+        .remove('open');
+
+    };
+
+
+  $('#saveU').onclick =
+    () => {
+
+      const name =
+        $('#uName').value.trim();
+
+
+      if (!name) {
+
+        return;
+
+      }
+
+
+      usersList.push({
+
+        name,
+
+        phone:
+          $('#uPhone')
+            .value
+            .trim(),
+
+        email:
+          $('#uEmail')
+            .value
+            .trim()
+
+      });
+
+
+      localStorage.setItem(
+
+        'mm_users',
+
+        JSON.stringify(
+          usersList
+        )
+
+      );
+
+
+      users();
+
+    };
+
+
+  document
+    .querySelectorAll('[data-du]')
+    .forEach(button => {
+
+      button.onclick =
+        () => {
+
+          usersList.splice(
+            Number(
+              button.dataset.du
+            ),
+            1
+          );
+
+
+          localStorage.setItem(
+
+            'mm_users',
+
+            JSON.stringify(
+              usersList
+            )
+
+          );
+
+
+          users();
+
+        };
+
+    });
+
+}
+
+
+/* =====================================================
+   ORGANIZAR SITE
+===================================================== */
+
+function sitePage() {
+
+  const site =
+    MM.getSite();
+
+
+  page.innerHTML = `
+
+    <div class="admin-title">
+
+      <div>
+
+        <span class="eyebrow">
+          Vitrine
+        </span>
+
+        <h1>
+          Organizar site
+        </h1>
+
+      </div>
+
+
+      <a
+        class="btn secondary"
+        href="index.html"
+      >
+        Visualizar
+      </a>
+
+    </div>
+
+
+    <div class="settings-grid">
+
+
+      <section class="settings-card">
+
+        <h2>
+          Topo do site
+        </h2>
+
+
+        <div class="field">
+
+          <label>
+            Título
+          </label>
+
+          <input
+            id="heroT"
+            value="${escape(site.heroTitle)}"
+          >
+
+        </div>
+
+
+        <div class="field mt10">
+
+          <label>
+            Texto
+          </label>
+
+          <textarea
+            id="heroX"
+            rows="4"
+          >${escape(site.heroText)}</textarea>
+
+        </div>
+
+
+        <label class="check-row">
+
+          <input
+            id="showCats"
+            type="checkbox"
+            ${
+              site.showCategories !== false
+                ? 'checked'
+                : ''
+            }
+          >
+
+          Mostrar categorias
+
+        </label>
+
+
+        <label class="check-row">
+
+          <input
+            id="showLaunch"
+            type="checkbox"
+            ${
+              site.showLaunches !== false
+                ? 'checked'
+                : ''
+            }
+          >
+
+          Mostrar lançamentos
+
+        </label>
+
+      </section>
+
+
+      <section class="settings-card full-card">
+
+        <h2>
+          Fotos e nomes das categorias
+        </h2>
+
+
+        <div class="category-admin-grid">
+
+          ${
+            [
+              'Cama',
+              'Mesa',
+              'Banho',
+              'Infantil'
+            ]
+            .map(
+              category => `
+
+                <div class="category-admin">
+
+                  <img
+                    id="catImg${category}"
+                    src="${escape(
+                      site.categories[
+                        category
+                      ].image
+                    )}"
+                  >
+
+
+                  <div class="field">
+
+                    <label>
+                      ${category} - nome exibido
+                    </label>
+
+                    <input
+                      id="catLabel${category}"
+                      value="${escape(
+                        site.categories[
+                          category
+                        ].label
+                      )}"
+                    >
+
+                  </div>
+
+
+                  <label
+                    class="btn secondary file-btn"
+                  >
+
+                    Trocar foto
+
+                    <input
+                      type="file"
+                      data-cat-file="${category}"
+                      accept="image/*"
+                      hidden
+                    >
+
+                  </label>
+
+                </div>
+              `
+            )
+            .join('')
+          }
+
+        </div>
+
+      </section>
+
+    </div>
+
+
+    <button
+      class="btn primary mt16"
+      id="saveSite"
+    >
+      Salvar organização
+    </button>
+  `;
+
+
+  let categories =
+    JSON.parse(
+      JSON.stringify(
+        site.categories
+      )
+    );
+
+
+  document
+    .querySelectorAll(
+      '[data-cat-file]'
+    )
+    .forEach(input => {
+
+      input.onchange =
+        async event => {
+
+          const category =
+            input.dataset.catFile;
+
+
+          const file =
+            event.target.files[0];
+
+
+          if (file) {
+
+            categories[
+              category
+            ].image =
+
+              await readImageFile(
+                file,
+                1200,
+                .82
+              );
+
+
+            $(
+              '#catImg' +
+              category
+            ).src =
+
+              categories[
+                category
+              ].image;
+
+          }
+
+        };
+
+    });
+
+
+  $('#saveSite').onclick =
+    () => {
+
+      for (
+        const category
+        of [
+          'Cama',
+          'Mesa',
+          'Banho',
+          'Infantil'
+        ]
+      ) {
+
+        categories[
+          category
+        ].label =
+
+          $(
+            '#catLabel' +
+            category
+          )
+          .value
+          .trim()
+
+          ||
+
+          category;
+
+      }
+
+
+      MM.saveSite({
+
+        heroTitle:
+          $('#heroT')
+            .value
+            .trim(),
+
+        heroText:
+          $('#heroX')
+            .value
+            .trim(),
+
+        showCategories:
+          $('#showCats').checked,
+
+        showLaunches:
+          $('#showLaunch').checked,
+
+        categories
+
+      });
+
+
+      toast(
+        'Site organizado e salvo'
+      );
+
+    };
+
+}
+
+
+/* =====================================================
+   SEGURANÇA E BACKUP
+===================================================== */
+
+function settings() {
+
+  page.innerHTML = `
+
+    <div class="admin-title">
+
+      <div>
+
+        <span class="eyebrow">
+          Sistema
+        </span>
+
+        <h1>
+          Segurança e backup
+        </h1>
+
+      </div>
+
+    </div>
+
+
+    <div class="settings-grid">
+
+
+      <section class="settings-card">
+
+        <h2>
+          WhatsApp e estoque
+        </h2>
+
+
+        <div class="field">
+
+          <label>
+            WhatsApp
+          </label>
+
+          <input
+            id="setPhone"
+            value="${MM.getWhatsApp()}"
+          >
+
+        </div>
+
+
+        <div class="field mt10">
+
+          <label>
+            Estoque baixo a partir de
+          </label>
+
+          <input
+            id="setLow"
+            type="number"
+            value="${low()}"
+          >
+
+        </div>
+
+
+        <button
+          class="btn primary mt16"
+          id="saveSettings"
+        >
+          Salvar
+        </button>
+
+      </section>
+
+
+      <section class="settings-card">
+
+        <h2>
+          Alterar senha
+        </h2>
+
+
+        <div class="field">
+
+          <label>
+            Nova senha segura
+          </label>
+
+          <input
+            id="newPass"
+            type="password"
+            placeholder="10+ caracteres, maiúscula, minúscula e número"
+          >
+
+          <p class="muted small">
+            Use pelo menos 10 caracteres
+            com maiúscula, minúscula e número.
+          </p>
+
+        </div>
+
+
+        <button
+          class="btn secondary mt16"
+          id="changePass"
+        >
+          Alterar senha
+        </button>
+
+      </section>
+
+
+      <section class="settings-card">
+
+        <h2>
+          Backup
+        </h2>
+
+
+        <div class="actions">
+
+          <button
+            class="btn secondary"
+            id="exportBackup"
+          >
+            Exportar
+          </button>
+
+
+          <label
+            class="btn secondary file-btn"
+          >
+
+            Importar
+
+            <input
+              id="importBackup"
+              type="file"
+              accept="application/json"
+              hidden
+            >
+
+          </label>
+
+        </div>
+
+      </section>
+
+
+      <section class="settings-card">
+
+        <h2>
+          Segurança online
+        </h2>
+
+        <p class="muted">
+          Login administrativo protegido pelo Supabase.
+          As Histórias da Maria também ficam salvas online
+          e podem ser publicadas pelo painel.
+        </p>
+
+      </section>
+
+    </div>
+  `;
+
+
+  $('#saveSettings').onclick =
+    () => {
+
+      localStorage.setItem(
+
+        'mm_whatsapp',
+
+        $('#setPhone')
+          .value
+          .replace(
+            /\D/g,
+            ''
+          )
+
+      );
+
+
+      localStorage.setItem(
+
+        'mm_low_stock',
+
+        String(
+
+          Math.max(
+            0,
+            Number(
+              $('#setLow').value
+            ) || 5
+          )
+
+        )
+
+      );
+
+
+      toast(
+        'Salvo'
+      );
+
+    };
+
+
+  $('#changePass').onclick =
+    async () => {
+
+      const password =
+        $('#newPass').value;
+
+
+      if (
+        password.length < 10 ||
+        !/[A-Z]/.test(password) ||
+        !/[a-z]/.test(password) ||
+        !/[0-9]/.test(password)
+      ) {
+
+        return alert(
+          'Use pelo menos 10 caracteres, ' +
+          'com letra maiúscula, minúscula e número.'
+        );
+
+      }
+
+
+      try {
+
+        await MMAuth.updatePassword(
+          password
+        );
+
+
+        toast(
+          'Senha alterada com segurança'
+        );
+
+      }
+
+      catch (error) {
+
+        alert(
+          'Não foi possível alterar: ' +
+          error.message
+        );
+
+      }
+
+    };
+
+
+  $('#exportBackup').onclick =
+    () => {
+
+      const data = {
+
+        products:
+          getProducts(),
+
+        users:
+          JSON.parse(
+            localStorage.getItem(
+              'mm_users'
+            ) || '[]'
+          ),
+
+        site:
+          MM.getSite(),
+
+        whatsapp:
+          MM.getWhatsApp()
+
+      };
+
+
+      const link =
+        document.createElement(
+          'a'
+        );
+
+
+      link.href =
+        URL.createObjectURL(
+
+          new Blob(
+            [
+              JSON.stringify(
+                data,
+                null,
+                2
+              )
+            ],
+            {
+              type:
+                'application/json'
+            }
+          )
+
+        );
+
+
+      link.download =
+        'margarida-maria-backup.json';
+
+
+      link.click();
+
+    };
+
+
+  $('#importBackup').onchange =
+    event => {
+
+      const file =
+        event.target.files[0];
+
+
+      if (!file) {
+
+        return;
+
+      }
+
+
+      const reader =
+        new FileReader();
+
+
+      reader.onload =
+        () => {
+
+          try {
+
+            const data =
+              JSON.parse(
+                reader.result
+              );
+
+
+            if (
+              data.products
+            ) {
+
+              saveProducts(
+                data.products
+              );
+
+            }
+
+
+            if (
+              data.users
+            ) {
+
+              localStorage.setItem(
+
+                'mm_users',
+
+                JSON.stringify(
+                  data.users
+                )
+
+              );
+
+            }
+
+
+            if (
+              data.site
+            ) {
+
+              MM.saveSite(
+                data.site
+              );
+
+            }
+
+
+            if (
+              data.whatsapp
+            ) {
+
+              localStorage.setItem(
+                'mm_whatsapp',
+                data.whatsapp
+              );
+
+            }
+
+
+            toast(
+              'Backup importado'
+            );
+
+          }
+
+          catch (error) {
+
+            alert(
+              'Backup inválido'
+            );
+
+          }
+
+        };
+
+
+      reader.readAsText(
+        file
+      );
+
+    };
+
+}
+
+
+/* =====================================================
+   HISTÓRIAS DA MARIA
+===================================================== */
+
+let __mmStories = [];
+
+
+async function storiesPage() {
+
+  page.innerHTML = `
+
+    <div class="admin-title">
+
+      <div>
+
+        <span class="eyebrow">
+          Conteúdo especial
+        </span>
+
+        <h1>
+          Histórias da Maria
+        </h1>
+
+        <p class="muted">
+          Crie histórias curtas em estilo de quadrinhos.
+          A seção só aparece no catálogo quando uma
+          história estiver publicada.
+        </p>
+
+      </div>
+
+
+      <button
+        class="btn primary"
+        id="newStory"
+      >
+        + Nova história
+      </button>
+
+    </div>
+
+
+    <div
+      id="storiesStatus"
+      class="notice"
+    >
+      Carregando histórias…
+    </div>
+
+
+    <div
+      id="storiesList"
+      class="story-admin-list"
+    ></div>
+  `;
+
+
+  $('#newStory').onclick =
+    () => editStory();
+
+
+  try {
+
+    __mmStories =
+      await MMStories.listAdmin();
+
+
+    renderStoryList();
+
+  }
+
+  catch (error) {
+
+    $('#storiesStatus')
+      .innerHTML = `
+
+        <strong>
+          Histórias ainda não estão ativadas no Supabase.
+        </strong>
+
+        <br>
+
+        <span class="muted">
+          Execute uma única vez o arquivo
+          <b>SUPABASE_HISTORIAS.sql</b>
+          no SQL Editor. Depois volte aqui.
+        </span>
+
+        <br>
+
+        <small class="muted">
+          ${escape(error.message)}
+        </small>
+      `;
+
+
+    $('#storiesList')
+      .innerHTML = '';
+
+  }
+
+}
+
+
+function renderStoryList() {
+
+  const status =
+    $('#storiesStatus');
+
+  const list =
+    $('#storiesList');
+
+
+  if (
+    !status ||
+    !list
+  ) {
+
+    return;
+
+  }
+
+
+  status.innerHTML =
+    __mmStories.length
+
+      ? `
+          <strong>
+            ${__mmStories.length}
+          </strong>
+          história(s) cadastrada(s).
+        `
+
+      : `
+          Nenhuma história criada ainda.
+          Clique em
+          <strong>
+            + Nova história
+          </strong>
+          quando quiser começar.
+        `;
+
+
+  list.innerHTML =
+    __mmStories
+      .map(
+        story => `
+
+          <article class="story-admin-card">
+
+            <div class="story-admin-thumb">
+
+              ${
+                story.imagem
+
+                  ? `
+                      <img
+                        src="${escape(story.imagem)}"
+                      >
+                    `
+
+                  : '<span>🏠</span>'
+              }
+
+            </div>
+
+
+            <div class="story-admin-copy">
+
+              <span class="chip">
+                ${
+                  story.publicada
+                    ? 'Publicada'
+                    : 'Rascunho'
+                }
+              </span>
+
+
+              <h3>
+                ${escape(story.titulo)}
+              </h3>
+
+
+              <p>
+                ${escape(story.situacao || '')}
+              </p>
+
+
+              <small>
+
+                ${
+                  escape(
+                    story.cliente_nome ||
+                    'Cliente'
+                  )
+                }
+
+                + Maria ·
+
+                ${
+                  Array.isArray(
+                    story.produto_ids
+                  )
+                    ? story.produto_ids.length
+                    : 0
+                }
+
+                produto(s)
+
+              </small>
+
+            </div>
+
+
+            <div class="story-admin-actions">
+
+              <button
+                class="btn secondary storyEdit"
+                data-id="${escape(story.id)}"
+              >
+                Editar
+              </button>
+
+            </div>
+
+          </article>
+        `
+      )
+      .join('');
+
+
+  list
+    .querySelectorAll(
+      '.storyEdit'
+    )
+    .forEach(button => {
+
+      button.onclick =
+        () => editStory(
+          button.dataset.id
+        );
+
+    });
+
+}
+
+
+/* =====================================================
+   PRODUTOS DA HISTÓRIA
+===================================================== */
+
+function storyProductChecks(
+  selected = []
+) {
+
+  const selectedSet =
+    new Set(
+      selected || []
+    );
+
+
+  return getProducts()
+
+    .filter(
+      product =>
+        product.active !== false
+    )
+
+    .map(
+      product => `
+
+        <label class="story-product-option">
+
+          <input
+            type="checkbox"
+            data-story-product
+            value="${escape(product.id)}"
+            ${
+              selectedSet.has(
+                product.id
+              )
+                ? 'checked'
+                : ''
+            }
+          >
+
+
+          <img
+            src="${escape(
+              product.image ||
+              'sem-imagem.svg'
+            )}"
+          >
+
+
+          <span>
+
+            <strong>
+              ${escape(product.name)}
+            </strong>
+
+            <small>
+              ${money(product.price)}
+            </small>
+
+          </span>
+
+        </label>
+      `
+    )
+
+    .join('');
+
+}
+
+
+/* =====================================================
+   PRÉVIA DA HISTÓRIA
+===================================================== */
+
+function storyPreview(
+  story
+) {
+
+  const products =
+    getProducts()
+      .filter(
+        product =>
+          (
+            story.produto_ids || []
+          )
+          .includes(
+            product.id
+          )
+      );
+
+
+  return `
+
+    <div class="story-preview-card">
+
+      <div class="story-preview-title">
+
+        <span class="eyebrow">
+          Histórias com a Maria
+        </span>
+
+        <h2>
+          ${escape(
+            story.titulo ||
+            'Sua história'
+          )}
+        </h2>
+
+        <p>
+          ${escape(
+            story.situacao ||
+            'Conte rapidamente o que aconteceu com o cliente.'
+          )}
+        </p>
+
+      </div>
+
+
+      <div class="comic-strip preview">
+
+
+        <div class="comic-panel client">
+
+          <div class="comic-scene">
+
+            ${
+              story.imagem
+
+                ? `
+                    <img
+                      src="${escape(
+                        story.imagem
+                      )}"
+                    >
+                  `
+
+                : `
+                    <span class="scene-placeholder">
+                      🏠
+                    </span>
+                  `
+            }
+
+          </div>
+
+
+          <div class="speech client-speech">
+
+            <strong>
+              ${escape(
+                story.cliente_nome ||
+                'Cliente'
+              )}
+            </strong>
+
+            <p>
+              ${escape(
+                story.fala_cliente ||
+                'Preciso renovar minha casa…'
+              )}
+            </p>
+
+          </div>
+
+        </div>
+
+
+        <div class="comic-panel maria">
+
+          <img
+            class="comic-maria"
+            src="maria-logo.png"
+          >
+
+
+          <div class="speech maria-speech">
+
+            <strong>
+              Maria
+            </strong>
+
+            <p>
+              ${escape(
+                story.fala_maria ||
+                'Eu te ajudo a encontrar a peça ideal!'
+              )}
+            </p>
+
+          </div>
+
+        </div>
+
+
+        <div class="comic-panel products">
+
+          <strong>
+            Escolhas da Maria
+          </strong>
+
+
+          <div class="comic-products">
+
+            ${
+              products.length
+
+                ? products
+                    .map(
+                      product => `
+
+                        <div>
+
+                          <img
+                            src="${escape(
+                              product.image
+                            )}"
+                          >
+
+                          <small>
+                            ${escape(
+                              product.name
+                            )}
+                          </small>
+
+                        </div>
+                      `
+                    )
+                    .join('')
+
+                : `
+                    <p class="muted">
+                      Selecione até 3 produtos.
+                    </p>
+                  `
+            }
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  `;
+
+}
+
+
+/* =====================================================
+   EDITAR HISTÓRIA
+===================================================== */
+
+async function editStory(
+  id
+) {
+
+  const oldStory =
+    __mmStories.find(
+      story =>
+        String(story.id) ===
+        String(id)
+    )
+
+    ||
+
+    {
+
+      titulo:
+        '',
+
+      cliente_nome:
+        '',
+
+      situacao:
+        '',
+
+      fala_cliente:
+        '',
+
+      fala_maria:
+        '',
+
+      imagem:
+        '',
+
+      produto_ids:
+        [],
+
+      publicada:
+        false,
+
+      ordem:
+        0
+
+    };
+
+
+  let image =
+    oldStory.imagem || '';
+
+
+  page.innerHTML = `
+
+    <div class="admin-title">
+
+      <div>
+
+        <span class="eyebrow">
+          Histórias da Maria
+        </span>
+
+        <h1>
+          ${
+            id
+              ? 'Editar história'
+              : 'Nova história'
+          }
+        </h1>
+
+        <p class="muted">
+          Monte uma história rápida.
+          Você pode deixar como rascunho
+          e publicar quando estiver pronta.
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <div class="story-editor-grid">
+
+
+      <section class="settings-card">
+
+
+        <div class="field">
+
+          <label>
+            Título
+          </label>
+
+          <input
+            id="storyTitle"
+            value="${escape(
+              oldStory.titulo || ''
+            )}"
+          >
+
+        </div>
+
+
+        <div class="field mt10">
+
+          <label>
+            Cliente / personagem
+          </label>
+
+          <input
+            id="storyClient"
+            value="${escape(
+              oldStory.cliente_nome ||
+              ''
+            )}"
+            placeholder="Ex.: Ana"
+          >
+
+        </div>
+
+
+        <div class="field mt10">
+
+          <label>
+            Situação
+          </label>
+
+          <textarea
+            id="storySituation"
+            rows="3"
+            placeholder="Ex.: Acabou de se mudar e precisa de roupa de cama nova."
+          >${escape(
+            oldStory.situacao || ''
+          )}</textarea>
+
+        </div>
+
+
+        <div class="field mt10">
+
+          <label>
+            Fala do cliente
+          </label>
+
+          <textarea
+            id="storyClientText"
+            rows="3"
+          >${escape(
+            oldStory.fala_cliente ||
+            ''
+          )}</textarea>
+
+        </div>
+
+
+        <div class="field mt10">
+
+          <label>
+            Fala da Maria
+          </label>
+
+          <textarea
+            id="storyMariaText"
+            rows="3"
+          >${escape(
+            oldStory.fala_maria ||
+            ''
+          )}</textarea>
+
+        </div>
+
+
+        <div class="field mt10">
+
+          <label>
+            Imagem da situação (opcional)
+          </label>
+
+
+          <label class="btn secondary file-btn">
+
+            Escolher imagem
+
+            <input
+              id="storyImage"
+              type="file"
+              accept="image/*"
+              hidden
+            >
+
+          </label>
+
+
+          <div
+            id="storyImageMini"
+            class="story-image-mini"
+          >
+
+            ${
+              image
+
+                ? `
+                    <img
+                      src="${escape(image)}"
+                    >
+                  `
+
+                : '<span>Sem imagem ainda</span>'
+            }
+
+          </div>
+
+        </div>
+
+
+        <div class="field mt10">
+
+          <label>
+            Produtos que aparecem (até 3)
+          </label>
+
+          <div
+            class="story-product-picker"
+            id="storyProductPicker"
+          >
+            ${storyProductChecks(
+              oldStory.produto_ids
+            )}
+          </div>
+
+        </div>
+
+
+        <div class="story-publish-row">
+
+          <label class="check-row">
+
+            <input
+              id="storyPublished"
+              type="checkbox"
+              ${
+                oldStory.publicada
+                  ? 'checked'
+                  : ''
+              }
+            >
+
+            Publicar no catálogo
+
+          </label>
+
+
+          <div class="field story-order">
+
+            <label>
+              Ordem
+            </label>
+
+            <input
+              id="storyOrder"
+              type="number"
+              value="${Number(
+                oldStory.ordem || 0
+              )}"
+            >
+
+          </div>
+
+        </div>
+
+
+        <div class="actions mt16">
+
+          <button
+            class="btn primary"
+            id="saveStory"
+          >
+            Salvar história
+          </button>
+
+
+          <button
+            class="btn secondary"
+            id="cancelStory"
+          >
+            Voltar
+          </button>
+
+
+          ${
+            id
+
+              ? `
+                  <button
+                    class="btn danger"
+                    id="deleteStory"
+                  >
+                    Excluir
+                  </button>
+                `
+
+              : ''
+          }
+
+        </div>
+
+      </section>
+
+
+      <section>
+
+        <div id="storyLivePreview">
+        </div>
+
+      </section>
+
+    </div>
+  `;
+
+
+  function collect() {
+
+    const productIds =
+      [
+        ...document
+          .querySelectorAll(
+            '[data-story-product]:checked'
+          )
+      ]
+      .map(
+        element =>
+          element.value
+      )
+      .slice(
+        0,
+        3
+      );
+
+
+    return {
+
+      id:
+        oldStory.id,
+
+      titulo:
+        $('#storyTitle')
+          .value
+          .trim(),
+
+      cliente_nome:
+        $('#storyClient')
+          .value
+          .trim(),
+
+      situacao:
+        $('#storySituation')
+          .value
+          .trim(),
+
+      fala_cliente:
+        $('#storyClientText')
+          .value
+          .trim(),
+
+      fala_maria:
+        $('#storyMariaText')
+          .value
+          .trim(),
+
+      imagem:
+        image,
+
+      produto_ids:
+        productIds,
+
+      publicada:
+        $('#storyPublished')
+          .checked,
+
+      ordem:
+        Number(
+          $('#storyOrder').value ||
+          0
+        )
+
+    };
+
+  }
+
+
+  function preview() {
+
+    $('#storyLivePreview')
+      .innerHTML =
+      storyPreview(
+        collect()
+      );
+
+  }
+
+
+  document
+    .querySelectorAll(
+      '#storyTitle,' +
+      '#storyClient,' +
+      '#storySituation,' +
+      '#storyClientText,' +
+      '#storyMariaText,' +
+      '#storyPublished,' +
+      '#storyOrder'
+    )
+    .forEach(
+      element => {
+
+        element.addEventListener(
+          'input',
+          preview
+        );
+
+      }
+    );
+
+
+  document
+    .querySelectorAll(
+      '[data-story-product]'
+    )
+    .forEach(
+      element => {
+
+        element.onchange =
+          () => {
+
+            const checked =
+              [
+                ...document
+                  .querySelectorAll(
+                    '[data-story-product]:checked'
+                  )
+              ];
+
+
+            if (
+              checked.length > 3
+            ) {
+
+              element.checked =
+                false;
+
+
+              toast(
+                'Escolha no máximo 3 produtos'
+              );
+
+            }
+
+
+            preview();
+
+          };
+
+      }
+    );
+
+
+  $('#storyImage').onchange =
+    async event => {
+
+      const file =
+        event.target.files[0];
+
+
+      if (!file) {
+
+        return;
+
+      }
+
+
+      image =
+        await readImageFile(
+          file,
+          900,
+          .72
+        );
+
+
+      $('#storyImageMini')
+        .innerHTML = `
+
+          <img
+            src="${image}"
+          >
+        `;
+
+
+      preview();
+
+    };
+
+
+  $('#cancelStory').onclick =
+    storiesPage;
+
+
+  $('#saveStory').onclick =
+    async () => {
+
+      const story =
+        collect();
+
+
+      if (
+        !story.titulo
+      ) {
+
+        return alert(
+          'Dê um título para a história.'
+        );
+
+      }
+
+
+      try {
+
+        $('#saveStory').disabled =
+          true;
+
+
+        await MMStories.save(
+          story
+        );
+
+
+        toast(
+          story.publicada
+            ? 'História publicada!'
+            : 'Rascunho salvo'
+        );
+
+
+        storiesPage();
+
+      }
+
+      catch (error) {
+
+        alert(
+          'Não foi possível salvar: ' +
+          error.message
+        );
+
+
+        $('#saveStory').disabled =
+          false;
+
+      }
+
+    };
+
+
+  if (id) {
+
+    $('#deleteStory').onclick =
+      async () => {
+
+        if (
+          !confirm(
+            'Excluir esta história?'
+          )
+        ) {
+
+          return;
+
+        }
+
+
+        try {
+
+          await MMStories.remove(
+            oldStory.id
+          );
+
+
+          toast(
+            'História excluída'
+          );
+
+
+          storiesPage();
+
+        }
+
+        catch (error) {
+
+          alert(
+            'Não foi possível excluir: ' +
+            error.message
+          );
+
+        }
+
+      };
+
+  }
+
+
+  preview();
+
+}
+
+
+/* =====================================================
+   INICIALIZAÇÃO E RECUPERAÇÃO DE SENHA
+===================================================== */
+
+(async () => {
+
+  const recovery =
+    await MMAuth
+      .acceptRecoveryFromUrl();
+
+
+  if (recovery) {
+
+    $('#loginView').hidden =
+      true;
+
+    $('#recoveryView').hidden =
+      false;
+
+    $('#adminApp').hidden =
+      true;
+
+
+    /*
+      Remove token/código da barra
+      depois que a sessão segura
+      já foi criada.
+    */
+
+    history.replaceState(
+      null,
+      '',
+      location.pathname
+    );
+
+
+    return;
+
+  }
+
+
+  /*
+    Acesso normal.
+    Nunca mostra a tela de criação
+    de senha.
+  */
+
+  $('#recoveryView').hidden =
+    true;
+
+  $('#loginView').hidden =
+    false;
+
+
   showApp();
+
 })();
-document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b)return;document.querySelectorAll('[data-page]').forEach(x=>x.classList.toggle('active',x.dataset.page===b.dataset.go));render(b.dataset.go)});
+
+
+/* =====================================================
+   BOTÕES RÁPIDOS DO DASHBOARD
+===================================================== */
+
+document.addEventListener(
+  'click',
+  event => {
+
+    const button =
+      event.target.closest(
+        '[data-go]'
+      );
+
+
+    if (!button) {
+
+      return;
+
+    }
+
+
+    document
+      .querySelectorAll(
+        '[data-page]'
+      )
+      .forEach(
+        item => {
+
+          item.classList.toggle(
+
+            'active',
+
+            item.dataset.page ===
+            button.dataset.go
+
+          );
+
+        }
+      );
+
+
+    render(
+      button.dataset.go
+    );
+
+  }
+);
