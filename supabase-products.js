@@ -171,7 +171,14 @@
   }
 
 
-  function getToken() {
+  async function getToken() {
+
+    if (
+      window.MMAuth?.getFreshToken
+    ) {
+      return await window.MMAuth
+        .getFreshToken();
+    }
 
     return (
       window.MMAuth?.getToken?.() ||
@@ -215,7 +222,7 @@
   async function listAdmin() {
 
     const token =
-      getToken();
+      await getToken();
 
 
     if (!token) {
@@ -339,7 +346,7 @@
   ) {
 
     const token =
-      getToken();
+      await getToken();
 
 
     /*
@@ -424,7 +431,7 @@
   async function refresh() {
 
     const token =
-      getToken();
+      await getToken();
 
 
     /*
@@ -439,7 +446,7 @@
 
 
       /*
-        V59.3 - MIGRAÇÃO DEFINITIVA
+        V59.4 - MIGRAÇÃO DEFINITIVA + JWT RENOVADO
 
         Se a tabela produtos_mm estiver vazia,
         sempre tenta enviar os produtos locais,
@@ -594,7 +601,7 @@
   };
 
   /*
-    V59.3
+    V59.4
     Quando a página do ADM abre, o importador de produtos é carregado
     antes de o administrador fazer login. A primeira leitura, portanto,
     acontece como visitante.
