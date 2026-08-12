@@ -3,37 +3,16 @@
 
 <head>
   <meta charset="utf-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
-  >
-
-  <meta
-    name="theme-color"
-    content="#17352b"
-  >
-
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17352b">
   <title>Scanner | Margarida Maria</title>
-
-  <link
-    rel="icon"
-    href="favicon.png"
-  >
-
-  <link
-    rel="stylesheet"
-    href="styles.css"
-  >
+  <link rel="icon" href="favicon.png">
+  <link rel="stylesheet" href="styles.css">
 </head>
-
 
 <body>
 
   <div class="admin-shell scanner-shell">
-
-
-    <!-- MENU LATERAL -->
 
     <aside class="sidebar">
 
@@ -59,8 +38,6 @@
     </aside>
 
 
-    <!-- CONTEÚDO DO SCANNER -->
-
     <main class="admin-main">
 
       <h1>
@@ -72,8 +49,6 @@
       </p>
 
 
-      <!-- CÂMERA -->
-
       <div class="scanner-box">
 
         <video
@@ -84,13 +59,10 @@
         ></video>
 
         <div class="scan-frame"></div>
-
         <div class="scan-line"></div>
 
       </div>
 
-
-      <!-- BOTÕES DA CÂMERA -->
 
       <div class="actions mt16">
 
@@ -102,7 +74,6 @@
           📷 Abrir câmera
         </button>
 
-
         <button
           class="btn secondary"
           id="stopScan"
@@ -113,8 +84,6 @@
 
       </div>
 
-
-      <!-- CÓDIGO MANUAL -->
 
       <div class="field mt16">
 
@@ -141,8 +110,6 @@
       </button>
 
 
-      <!-- RESULTADO -->
-
       <div
         id="scanResult"
         class="mt16"
@@ -153,35 +120,24 @@
   </div>
 
 
-  <!-- AVISOS -->
-
   <div
     class="toast"
     id="toast"
   ></div>
 
 
-  <!-- DADOS DO SITE -->
-
+  <!-- Supabase + dados sincronizados -->
+  <script src="supabase-config.js"></script>
+  <script src="supabase-auth.js"></script>
   <script src="data.js"></script>
+  <script src="supabase-products.js"></script>
 
-
-  <!--
-    LEITOR ALTERNATIVO DE CÓDIGO DE BARRAS
-
-    É usado automaticamente quando
-    BarcodeDetector não estiver disponível.
-  -->
 
   <script
     src="https://unpkg.com/@zxing/browser@0.2.1"
   ></script>
 
-
-  <!-- SCANNER -->
-
   <script src="scanner.js"></script>
 
 </body>
-
 </html>
