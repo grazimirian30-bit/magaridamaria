@@ -1,22 +1,28 @@
-Margarida Maria V3 - SITE + APP PWA
-Envie TODOS os arquivos extraídos para a raiz do repositório GitHub Pages.
-Página pública: index.html
-ADM: admin.html
-Scanner: scanner.html
-No primeiro acesso ao ADM, crie usuário e senha com pelo menos 6 caracteres.
+CORREÇÃO V59.1
 
+O erro aconteceu porque já existe no Supabase uma tabela antiga chamada "produtos".
 
-V5 PRESERVADA — HISTÓRIAS DA MARIA
-- Catálogo e imagens originais preservados.
-- Login ADM via Supabase.
-- Novo botão Histórias da Maria no painel.
-- A seção pública de histórias fica invisível enquanto não houver história publicada.
-- Para ativar o salvamento online das histórias, execute uma vez SUPABASE_HISTORIAS.sql no SQL Editor do Supabase.
-- Depois disso, histórias podem ser criadas/editadas/publicadas pelo ADM sem alterar o GitHub.
+Agora vamos usar:
+public.produtos_mm
 
+PASSO 1
+Supabase -> SQL Editor -> New query
+Cole/executa SUPABASE_PRODUTOS_V59_1.sql inteiro.
 
-=== V5 MASTER CONSOLIDADA ===
-Base: V5 original com fotos e catálogo preservados.
-Inclui: site + PWA/app, painel ADM ilustrativo, scanner, Histórias da Maria preparada, alteração de senha dentro do ADM e recuperação de senha Supabase consolidada.
-Para Histórias da Maria online, execute SUPABASE_HISTORIAS.sql uma única vez no SQL Editor.
-Ao publicar no GitHub Pages, substitua os arquivos antigos pelos arquivos deste pacote para evitar mistura de versões.
+PASSO 2
+Se aparecer:
+produtos_mm | 0
+deu certo.
+
+PASSO 3
+No GitHub, substitua somente:
+supabase-products.js
+
+Se você AINDA NÃO colocou os outros arquivos da V59 no GitHub, use também os arquivos do pacote V59 anterior:
+- data.js
+- admin.html
+- index.html
+- scanner.html
+- sw.js
+
+NÃO apague a tabela antiga "produtos".
