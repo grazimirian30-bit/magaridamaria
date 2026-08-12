@@ -559,4 +559,46 @@
     syncAll
   };
 
+  /*
+    V59.2
+    Quando a página do ADM abre, o importador de produtos é carregado
+    antes de o administrador fazer login. A primeira leitura, portanto,
+    acontece como visitante.
+
+    Este ajuste reaplica refresh() imediatamente após um login bem-sucedido,
+    garantindo a primeira migração dos produtos locais para produtos_mm.
+  */
+  function hookAdminLogin() {
+    const auth = window.MMAuth;
+
+    if (
+      !auth ||
+      typeof auth.login !== 'function' ||
+      auth.__mmProductsLoginHook
+    ) {
+      return;
+    }
+
+    const originalLogin = auth.login.bind(auth);
+
+    auth.login = async (...args) => {
+      const result = await originalLogin(...args);
+
+      try {
+        await refresh();
+      } catch (error) {
+        console.warn(
+          'Login realizado, mas a sincronização inicial dos produtos falhou:',
+          error
+        );
+      }
+
+      return result;
+    };
+
+    auth.__mmProductsLoginHook = true;
+  }
+
+  hookAdminLogin();
+
 })();
