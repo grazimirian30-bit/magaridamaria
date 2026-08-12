@@ -1,10 +1,10 @@
 /* =====================================================
    MARGARIDA MARIA
    SERVICE WORKER
-   V58 - IMPORTADOR DE FORNECEDOR
+   V59 - PRODUTOS NO SUPABASE
 ===================================================== */
 
-const CACHE = 'margarida-maria-v58-importador-fornecedor-20260811';
+const CACHE = 'margarida-maria-v59-produtos-supabase-20260811';
 
 const ASSETS = [
   'admin.html',
@@ -52,6 +52,7 @@ const ASSETS = [
   'supplier-import.js',
   'supabase-auth.js',
   'supabase-config.js',
+  'supabase-products.js',
   'supabase-stories.js'
 ];
 
@@ -62,10 +63,18 @@ self.addEventListener('install', event => {
     caches.open(CACHE).then(async cache => {
       for (const asset of ASSETS) {
         try {
-          const response = await fetch(new Request(asset, { cache: 'reload' }));
-          if (response.ok) await cache.put(asset, response);
+          const response = await fetch(
+            new Request(asset, { cache: 'reload' })
+          );
+
+          if (response.ok) {
+            await cache.put(asset, response);
+          }
         } catch (error) {
-          console.warn('Não foi possível atualizar:', asset);
+          console.warn(
+            'Não foi possível atualizar:',
+            asset
+          );
         }
       }
     })
@@ -75,11 +84,15 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
-      .then(cacheNames => Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE) return caches.delete(cacheName);
-        })
-      ))
+      .then(cacheNames =>
+        Promise.all(
+          cacheNames.map(cacheName => {
+            if (cacheName !== CACHE) {
+              return caches.delete(cacheName);
+            }
+          })
+        )
+      )
       .then(() => self.clients.claim())
   );
 });
@@ -91,18 +104,23 @@ self.addEventListener('fetch', event => {
 
   const url = new URL(request.url);
 
-  /* Bibliotecas externas (Supabase, SheetJS, ZXing etc.) ficam por conta do navegador. */
+  // Bibliotecas externas:
+  // Supabase, SheetJS, ZXing etc.
   if (url.origin !== self.location.origin) return;
 
-  /* Arquivos sensíveis a atualização: sempre tenta a rede primeiro sem cache velho. */
   const alwaysFresh = [
     '/scanner.html',
     '/scanner.js',
     '/admin.html',
     '/admin.js',
+    '/index.html',
+    '/data.js',
+    '/supabase-products.js',
     '/supplier-import.js',
     '/supplier-import.css'
-  ].some(path => url.pathname.endsWith(path));
+  ].some(path =>
+    url.pathname.endsWith(path)
+  );
 
   if (alwaysFresh) {
     event.respondWith(
@@ -110,12 +128,20 @@ self.addEventListener('fetch', event => {
         .then(response => {
           if (response && response.ok) {
             const copy = response.clone();
-            caches.open(CACHE).then(cache => cache.put(request, copy));
+
+            caches.open(CACHE)
+              .then(cache =>
+                cache.put(request, copy)
+              );
           }
+
           return response;
         })
-        .catch(() => caches.match(request))
+        .catch(() =>
+          caches.match(request)
+        )
     );
+
     return;
   }
 
@@ -124,26 +150,48 @@ self.addEventListener('fetch', event => {
       .then(response => {
         if (response && response.ok) {
           const copy = response.clone();
-          caches.open(CACHE).then(cache => cache.put(request, copy));
+
+          caches.open(CACHE)
+            .then(cache =>
+              cache.put(request, copy)
+            );
         }
+
         return response;
       })
       .catch(async () => {
-        const cached = await caches.match(request);
+        const cached =
+          await caches.match(request);
+
         if (cached) return cached;
 
-        if (request.mode === 'navigate') {
-          return caches.match('index.html');
+        if (
+          request.mode === 'navigate'
+        ) {
+          return caches.match(
+            'index.html'
+          );
         }
 
-        return new Response('Offline', {
-          status: 503,
-          statusText: 'Offline'
-        });
+        return new Response(
+          'Offline',
+          {
+            status: 503,
+            statusText: 'Offline'
+          }
+        );
       })
   );
 });
 
-self.addEventListener('message', event => {
-  if (event.data === 'SKIP_WAITING') self.skipWaiting();
-});
+self.addEventListener(
+  'message',
+  event => {
+    if (
+      event.data ===
+      'SKIP_WAITING'
+    ) {
+      self.skipWaiting();
+    }
+  }
+);
