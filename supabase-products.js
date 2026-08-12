@@ -439,28 +439,53 @@
 
 
       /*
-        PRIMEIRA MIGRAÇÃO
+        V59.3 - MIGRAÇÃO DEFINITIVA
 
-        Se o Supabase estiver vazio,
-        envia automaticamente os produtos
-        que já existem no navegador.
+        Se a tabela produtos_mm estiver vazia,
+        sempre tenta enviar os produtos locais,
+        sem depender de nenhuma marca antiga
+        de sincronização.
+
+        Se os testes anteriores tiverem deixado
+        o cache local vazio, restaura os produtos
+        padrão antes do primeiro envio.
       */
 
-      if (
-        !remote.length &&
-        localStorage.getItem(
-          initializedKey
-        ) !== '1'
-      ) {
+      if (!remote.length) {
 
-        const local =
+        let local =
           window.MM.getProducts();
+
+
+        if (
+          !Array.isArray(local) ||
+          !local.length
+        ) {
+
+          local =
+            typeof structuredClone === 'function'
+              ? structuredClone(window.MM_DEFAULT_PRODUCTS || [])
+              : JSON.parse(
+                  JSON.stringify(
+                    window.MM_DEFAULT_PRODUCTS || []
+                  )
+                );
+
+          if (local.length) {
+            window.MM
+              .__replaceProductsFromRemote(
+                local
+              );
+          }
+
+        }
 
 
         if (local.length) {
 
-          await syncAll(
-            local
+          await upsertAll(
+            local,
+            token
           );
 
 
@@ -470,9 +495,18 @@
           );
 
 
+          window.MM
+            .__replaceProductsFromRemote(
+              local
+            );
+
+
           return local;
 
         }
+
+
+        return [];
 
       }
 
@@ -560,7 +594,7 @@
   };
 
   /*
-    V59.2
+    V59.3
     Quando a página do ADM abre, o importador de produtos é carregado
     antes de o administrador fazer login. A primeira leitura, portanto,
     acontece como visitante.
